@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>电商工具 Go 版</title>
+    <link rel="stylesheet" href="./src/style.css"/>
+</head>
+<body>
+<div id="app">
+    <header>
+        <h1>🧰 电商工具 <span class="sub">Go + Wails 重构试验版</span></h1>
+        <span class="by">BY 大萝北拔萝卜</span>
+    </header>
+
+    <main>
+        <!-- Tab导航 -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="match">① 表格核对</button>
+            <button class="tab" data-tab="about">② 关于</button>
+        </nav>
+
+        <!-- 表格核对 -->
+        <section id="tab-match" class="panel active">
+            <div class="card">
+                <h3>1. 选择文件</h3>
+                <div class="row">
+                    <label>源表(被填的)</label>
+                    <input id="srcPath" placeholder="点击选择…" readonly onclick="pickFile('src')"/>
+                    <button onclick="pickFile('src')">浏览</button>
+                </div>
+                <div class="row">
+                    <label>目标表(数据源)</label>
+                    <input id="tgtPath" placeholder="点击选择…" readonly onclick="pickFile('tgt')"/>
+                    <button onclick="pickFile('tgt')">浏览</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. 检索键列(表头名)</h3>
+                <div class="row">
+                    <label>源表键列</label><input id="srcKey" value="售后工单号"/>
+                    <label>目标表键列</label><input id="tgtKey" value="售后工单号"/>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>3. 回填映射 (源列 → 目标列)</h3>
+                <div id="mapRows"></div>
+                <button class="small" onclick="addMapRow()">+ 添加映射</button>
+            </div>
+
+            <div class="card">
+                <h3>4. 多规格标记(可空)</h3>
+                <div class="row">
+                    <label>多规格判断列</label><input id="skuCol" value="备注"/>
+                    <label>备注列</label><input id="rmkCol" value="备注"/>
+                </div>
+                <div class="row">
+                    <label><input type="checkbox" id="skipExisting" checked/> 已有数据不覆盖</label>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="primary" onclick="runMatch()">▶ 开始核对</button>
+            </div>
+
+            <div id="result" class="result hidden"></div>
+        </section>
+
+        <!-- 关于 -->
+        <section id="tab-about" class="panel">
+            <div class="card">
+                <h3>关于本试验版</h3>
+                <p>Go + Wails 重构可行性验证：</p>
+                <ul>
+                    <li>✅ 后端: Go + Excelize 读写 xlsx(表格核对已跑通)</li>
+                    <li>⏳ 界面: 原生HTML/JS(本页)</li>
+                    <li>📦 目标: 单文件EXE(比Python版小50%) + 零杀软误报</li>
+                </ul>
+                <p class="muted">核心逻辑实测: 快麦售后明细 216 行全部匹配 ✓</p>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="./src/main.js" type="module"></script>
+</body>
+</html>
