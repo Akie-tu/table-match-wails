@@ -2,7 +2,7 @@
 import './style.css';
 
 // Wails 注入的绑定 (v2 自动生成于 frontend/wailsjs/go/main/App.js)
-import { RunMatch } from '../wailsjs/go/main/App';
+import { RunMatch, SelectFile } from '../wailsjs/go/main/App';
 
 const $ = (id) => document.getElementById(id);
 
@@ -35,14 +35,11 @@ addMapRow();
 // ---------- 选文件 ----------
 async function pickFile(kind) {
     try {
-        // Wails 运行时文件对话框 (v2: runtime.OpenFileDialog)
-        const { OpenFileDialog } = await import('../wailsjs/runtime/runtime.js');
-        const opts = { filters: [{ displayName: 'Excel', pattern: '*.xlsx;*.xlsm;*.csv' }] };
-        const path = await OpenFileDialog(opts);
+        const path = await SelectFile();
         if (path) $(kind === 'src' ? 'srcPath' : 'tgtPath').value = path;
     } catch (e) {
         console.error(e);
-        alert('文件对话框不可用(需在Wails环境运行)');
+        alert('选择文件失败: ' + e);
     }
 }
 window.pickFile = pickFile;

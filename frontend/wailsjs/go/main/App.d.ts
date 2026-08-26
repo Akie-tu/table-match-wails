@@ -9,3 +9,5 @@ export function ListSheets(arg1:string):Promise<Array<string>>;
 export function ReadSheet(arg1:string,arg2:string):Promise<Array<any>>;
 
 export function RunMatch(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<any>,arg6:string,arg7:string,arg8:boolean):Promise<backend.MatchResult>;
+
+export function SelectFile():Promise<string>;

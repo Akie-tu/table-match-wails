@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"tablematch/backend"
 )
 
@@ -26,6 +27,18 @@ func (a *App) startup(ctx context.Context) {
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// SelectFile: 原生文件选择对话框(前端调用)
+func (a *App) SelectFile() (string, error) {
+	opts := runtime.OpenDialogOptions{
+		Title: "选择文件",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Excel/CSV", Pattern: "*.xlsx;*.xlsm;*.csv"},
+			{DisplayName: "所有文件", Pattern: "*.*"},
+		},
+	}
+	return runtime.OpenFileDialog(a.ctx, opts)
 }
 
 // 表格核对: 前端调用入口
