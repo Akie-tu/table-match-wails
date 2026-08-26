@@ -78,3 +78,8 @@ func (a *App) SelectSavePath(suggestName string) (string, error) {
 	}
 	return runtime.SaveFileDialog(a.ctx, opts)
 }
+
+// 导入发票明细: 读Excel/CSV自动匹配列(抬头→名称/税号→识别号/金额→金额/数量→数量/类型=个人→自然人)
+func (a *App) ImportInvoiceDetail(path string) (*backend.ImportResult, error) {
+	return backend.ImportInvoiceDetail(path)
+}

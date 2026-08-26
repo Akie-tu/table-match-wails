@@ -2,7 +2,7 @@
 import './style.css';
 
 // Wails 注入的绑定 (v2 自动生成于 frontend/wailsjs/go/main/App.js)
-import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath } from '../wailsjs/go/main/App';
+import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail } from '../wailsjs/go/main/App';
 
 const $ = (id) => document.getElementById(id);
 
@@ -81,6 +81,12 @@ window.runMatch = runMatch;
 
 // ================= 开票模块 =================
 let invRows = [];
+// 初始化预置一行空发票(与Python版一致, 始终可粘贴)
+function emptyRow() {
+    return { invoice_type: '普通发票', tax_included: '是', buyer: '', tax_id: '',
+        is_natural: '', qty: '', amount: '', remark: '', item_name: '', tax_code: '', unit: '', tax_rate: '' };
+}
+invRows.push(emptyRow());
 
 // 发票类型/含税下拉选项
 const INV_TYPES = ['普通发票', '增值税专用发票'];
@@ -130,103 +136,111 @@ function invCollect() {
     });
 }
 
-// ---------- 批量粘贴(智能识别, 参考旧项目) ----------
-// 清洗单元格: 去货币符号/空格/千分位逗号
+// ---------- 批量粘贴(严格按Python主版逻辑) ----------
+// 清洗: 去引号/货币符号/零宽, 裁尾部空列
 function cleanCell(s) {
-    return String(s == null ? '' : s).trim()
-        .replace(/[¥￥$€\u00A0]/g, '')
-        .replace(/\s+/g, '')
-        .replace(/,/g, '');
+    return String(s == null ? '' : s)
+        .replace(/[\u200b\u200c\u200d\ufeff\u3000]/g, '')
+        .replace(/[¥￥$€]/g, '')
+        .stripQ()
+        .trim();
 }
-function isNum(s) { return s !== '' && /^[+-]?\d+(\.\d+)?$/.test(s); }
+String.prototype.stripQ = function () { return this.replace(/^["'""]+|["'""]+$/g, ''); };
 
-// 智能识别粘贴: 支持 单列/两列/多列
-// 列类型: text(文字) / amount(含小数) / qty(≤4位整数) / tax_id(≥15位长数字) / remark(>4位数字)
-function invSmartPaste(lines) {
-    const rows = lines.map((l) => l.split('\t').map(cleanCell));
-    const ncols = Math.max(...rows.map((r) => r.length));
-    if (!ncols) return 0;
-
-    // 每列分类
-    const colType = [];
-    for (let j = 0; j < ncols; j++) {
-        const vals = rows.map((r) => r[j] || '').filter((v) => v !== '');
-        if (vals.length && vals.every(isNum)) {
-            const hasDec = vals.some((v) => v.includes('.'));
-            const maxLen = Math.max(...vals.map((v) => v.length));
-            if (hasDec) colType[j] = 'amount';
-            else if (maxLen >= 15) colType[j] = 'tax_id';
-            else if (maxLen <= 4) colType[j] = 'qty';
-            else colType[j] = 'remark';
-        } else {
-            colType[j] = 'text';
-        }
-    }
-
-    // 分配列映射: 列索引 -> 字段
-    const mapping = {};
-    const used = new Set();
-    // 名称 = 第一个文字列
-    const nameCol = colType.findIndex((t) => t === 'text');
-    if (nameCol >= 0) { mapping[nameCol] = 'buyer'; used.add(nameCol); }
-    // 金额列(含小数优先)
-    colType.forEach((t, i) => { if (t === 'amount' && !used.has(i)) { mapping[i] = 'amount'; used.add(i); } });
-    // 数量列
-    colType.forEach((t, i) => { if (t === 'qty' && !used.has(i)) { mapping[i] = 'qty'; used.add(i); } });
-    // 税号列
-    colType.forEach((t, i) => { if (t === 'tax_id' && !used.has(i)) { mapping[i] = 'tax_id'; used.add(i); } });
-    // 备注列
-    colType.forEach((t, i) => { if (t === 'remark' && !used.has(i)) { mapping[i] = 'remark'; used.add(i); } });
-    // 剩余文字列(第2个起): tax_id → remark
-    let fi = 0;
-    const restFields = ['tax_id', 'remark'];
-    colType.forEach((t, i) => { if (t === 'text' && !used.has(i) && fi < restFields.length) { mapping[i] = restFields[fi++]; used.add(i); } });
-
-    // 追加行
-    let added = 0;
-    rows.forEach((cells) => {
-        const row = { invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
-            buyer: '', tax_id: '', is_natural: '', qty: '', amount: '', remark: '',
-            item_name: '', tax_code: '', unit: '', tax_rate: '' };
-        let hasVal = false;
-        cells.forEach((c, j) => {
-            if (c === '') return;
-            const f = mapping[j];
-            if (f && row[f] === '') { row[f] = c; hasVal = true; }
-        });
-        if (hasVal) { invRows.push(row); added++; }
-    });
-    return added;
+// 数字判断(允许逗号/连字符/空格) — 对应Python _looks_like_number
+function looksLikeNumber(s) {
+    if (s === '') return false;
+    const s2 = String(s).replace(/[,，\-]/g, '').replace(/\s+/g, '');
+    if (s2 === '') return false;
+    return !isNaN(Number(s2));
 }
 
-// Ctrl+V: 焦点在发票Tab任意位置都拦截做智能粘贴
-document.addEventListener('keydown', async (e) => {
-    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'v') return;
-    const active = document.activeElement;
-    if (!active || !active.closest('#tab-invoice')) return;
+// 粘贴: 发票Tab激活时全局拦截(焦点在任意位置都生效, 含表格外/下拉/按钮)
+document.addEventListener('paste', (e) => {
+    const invPanel = $('tab-invoice');
+    if (!invPanel || !invPanel.classList.contains('active')) return;
     e.preventDefault();
     let txt = '';
-    try { txt = await navigator.clipboard.readText(); } catch (err) { return; }
+    try { txt = (e.clipboardData || window.clipboardData).getData('text'); } catch (err) { return; }
     if (!txt) return;
     invCollect();
-    const lines = txt.split(/\r?\n/).filter((l) => l.trim() !== '');
-    if (!lines.length) return;
-    // 单行单列 → 填入当前焦点单元格(若有)
-    if (lines.length === 1 && !lines[0].includes('\t') && active.tagName === 'INPUT') {
-        const keyMap = { 'cell-buyer': 'buyer', 'cell-taxid': 'tax_id', 'cell-qty': 'qty', 'cell-amount': 'amount', 'cell-remark': 'remark' };
-        const key = keyMap[active.className];
-        const tr = active.closest('tr');
-        if (key && tr) {
-            const idx = [...tr.parentElement.children].indexOf(tr);
-            if (idx >= 0 && invRows[idx]) {
-                invRows[idx][key] = cleanCell(lines[0]);
-                invRender();
-                return;
+
+    // 清洗数据(对应Python inv_paste)
+    const rawRows = txt.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const rows = [];
+    for (const r of rawRows) {
+        const rr = r.split('\t').map(cleanCell);
+        while (rr.length && rr[rr.length - 1] === '') rr.pop(); // 去尾部空列
+        if (rr.some((c) => c !== '')) rows.push(rr);
+    }
+    if (!rows.length) return;
+
+    // 起始行: 总是从第0行开始填充(用户要求: 任何时候粘贴从第一行开始)
+    const startRow = 0;
+
+    // 判断起始列(对应Python start_key)
+    const keyCols = ['invoice_type', 'tax_included', 'buyer', 'tax_id', 'is_natural', 'qty', 'amount', 'remark'];
+    const ncols = Math.max(...rows.map((r) => r.length));
+    let startKey;
+
+    if (ncols === 2 && rows.every((r) => r.every((c) => c === '' || looksLikeNumber(c)))) {
+        // 两列纯数字: 有小数列→金额(6), 整数列→数量(5)
+        const dec = [false, false];
+        for (const r of rows) {
+            for (let j = 0; j < 2; j++) {
+                if (r[j] && r[j].includes('.')) dec[j] = true;
             }
         }
+        startKey = (dec[0] && !dec[1]) ? 6 : 5;
+    } else if (ncols >= 2) {
+        startKey = 2; // 多列从名称开始
+    } else if (rows.every((r) => r.every((c) => c === '' || looksLikeNumber(c)))) {
+        // 单列纯数字
+        const hasDec = rows.some((r) => r[0] && r[0].includes('.'));
+        if (hasDec) {
+            startKey = 6; // 金额
+        } else {
+            // >4位(订单号/长编码) → 备注(7), 否则数量(5)
+            let maxDigits = 0;
+            for (const r of rows) {
+                const d = String(r[0]).replace(/\D/g, '');
+                if (d) maxDigits = Math.max(maxDigits, d.length);
+            }
+            startKey = maxDigits > 4 ? 7 : 5;
+        }
+    } else {
+        startKey = 2; // 单列文字→名称
     }
-    const added = invSmartPaste(lines);
-    if (added) { invRender(); alert(`✔ 已粘贴 ${added} 行(智能识别列)`); }
+
+    // 扩展行: 已有行填充, 超出才新增(对应Python while append)
+    const need = startRow + rows.length;
+    while (invRows.length < need) {
+        invRows.push({ invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
+            buyer: '', tax_id: '', is_natural: '', qty: '', amount: '', remark: '',
+            item_name: '', tax_code: '', unit: '', tax_rate: '' });
+    }
+
+    // 逐格写入
+    let filled = 0;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        for (let j = 0; j < row.length; j++) {
+            const k = startKey + j;
+            if (k >= keyCols.length) break;
+            const idx = startRow + i;
+            const val = row[j];
+            if (!val) continue; // 跳过空值, 不覆盖已有
+            const key = keyCols[k];
+            if (key === 'is_natural') {
+                invRows[idx][key] = val === '是' ? '是' : '';
+            } else {
+                invRows[idx][key] = val;
+            }
+            filled++;
+        }
+    }
+    invRender();
+    if (filled) alert(`✔ 已粘贴 ${rows.length} 行`);
 });
 
 // 删除列: 清空选中列所有行的数据
@@ -253,7 +267,7 @@ function invAddRow() {
 }
 window.invAddRow = invAddRow;
 
-function invDelRow(i) { invCollect(); invRows.splice(i, 1); invRender(); }
+function invDelRow(i) { invCollect(); invRows.splice(i, 1); if (!invRows.length) invRows.push(emptyRow()); invRender(); }
 window.invDelRow = invDelRow;
 
 function invDelSel() {
@@ -261,13 +275,17 @@ function invDelSel() {
     if (!tr) { alert('请先点选一行'); return; }
     const idx = [...tr.parentElement.children].indexOf(tr);
     invRows.splice(idx, 1);
+    if (!invRows.length) invRows.push(emptyRow());
     invRender();
 }
 window.invDelSel = invDelSel;
 
 function invClear() {
     if (!confirm('清空全部发票？')) return;
-    invRows = [];
+    // 清空后保留一行空行(始终可直接粘贴, 不用手动新增)
+    invRows = [{ invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
+        buyer: '', tax_id: '', is_natural: '', qty: '', amount: '', remark: '',
+        item_name: '', tax_code: '', unit: '', tax_rate: '' }];
     invRender();
 }
 window.invClear = invClear;
@@ -307,11 +325,31 @@ window.invGenerate = invGenerate;
 async function invImportDetail() {
     const path = await SelectFile();
     if (!path) return;
+    const res = $('invResult');
+    res.classList.remove('hidden');
+    res.innerHTML = '⏳ 导入中…';
     try {
-        // 用 Go 侧 ReadSheet 读明细(首行表头) — 需要新增绑定, 先用简单方式: 提示
-        alert('导入明细功能开发中(下一版)');
+        const r = await ImportInvoiceDetail(path);
+        if (!r || !r.rows || !r.rows.length) {
+            res.innerHTML = `<div class="err">❌ 未解析到数据(请检查表头: 应含 抬头/税号/金额/数量/抬头类型)</div>`;
+            return;
+        }
+        // 导入的行直接替换当前表格(从第一行开始)
+        invRows = r.rows.map((x) => ({
+            invoice_type: x.invoice_type || $('invType').value, tax_included: $('invTaxInc').value,
+            buyer: x.buyer || '', tax_id: x.tax_id || '', is_natural: x.is_natural || '',
+            qty: x.qty || '', amount: x.amount || '', remark: x.remark || '',
+            item_name: '', tax_code: '', unit: '', tax_rate: '',
+        }));
+        invRender();
+        let msg = `✅ 已导入 ${r.imported} 条发票明细`;
+        if (r.missing && r.missing.length) msg += `\n⚠️ 未识别列: ${r.missing.join(', ')}`;
+        res.innerHTML = `<div class="ok">${msg.replace(/\n/g, '<br/>')}</div>`;
     } catch (e) {
-        alert('导入失败: ' + e);
+        res.innerHTML = `<div class="err">❌ ${e}</div>`;
     }
 }
 window.invImportDetail = invImportDetail;
+
+// 页面加载后渲染初始空行
+document.addEventListener('DOMContentLoaded', () => { invRender(); });

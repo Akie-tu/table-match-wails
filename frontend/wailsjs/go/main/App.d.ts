@@ -6,6 +6,8 @@ export function GenerateInvoice(arg1:Array<backend.Invoice>,arg2:backend.FixedCo
 
 export function Greet(arg1:string):Promise<string>;
 
+export function ImportInvoiceDetail(arg1:string):Promise<backend.ImportResult>;
+
 export function ListSheets(arg1:string):Promise<Array<string>>;
 
 export function ReadSheet(arg1:string,arg2:string):Promise<Array<any>>;

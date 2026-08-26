@@ -10,6 +10,10 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function ImportInvoiceDetail(arg1) {
+  return window['go']['main']['App']['ImportInvoiceDetail'](arg1);
+}
+
 export function ListSheets(arg1) {
   return window['go']['main']['App']['ListSheets'](arg1);
 }

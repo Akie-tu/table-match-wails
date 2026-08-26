@@ -53,12 +53,12 @@ const (
 
 // 默认固定内容
 type FixedContent struct {
-	InvoiceType string
-	TaxIncluded string
-	ItemName    string
-	TaxCode     string
-	Unit        string
-	TaxRate     string
+	InvoiceType string `json:"invoice_type"` // 发票类型
+	TaxIncluded string `json:"tax_included"` // 是否含税
+	ItemName    string `json:"item_name"`    // 项目名称
+	TaxCode     string `json:"tax_code"`     // 税收编码
+	Unit        string `json:"unit"`         // 单位
+	TaxRate     string `json:"tax_rate"`     // 税率
 }
 
 func DefaultFixed() FixedContent {
