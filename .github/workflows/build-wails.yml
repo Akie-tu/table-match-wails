@@ -1,0 +1,56 @@
+name: Build Wails EXE
+
+on:
+  push:
+    tags:
+      - "w*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Build frontend
+        shell: bash
+        working-directory: frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Generate bindings
+        shell: bash
+        run: |
+          wails generate module
+
+      - name: Build Windows EXE
+        shell: bash
+        run: |
+          wails build -skipbindings -clean -platform windows/amd64
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            build/bin/table-match-wails.exe
+          fail_on_unmatched_files: false

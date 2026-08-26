@@ -1,19 +1,34 @@
-# README
+# 电商工具 Go + Wails 重构版 (试验)
 
-## About
+用 Go + Wails v2 + Excelize 重构的电商工具，替代 Python/tkinter 版。
 
-This is the official Wails Vanilla template.
+## 优势
+- 单文件 EXE 更小 (预计 8-12MB vs Python 19MB)
+- 原生编译，更少杀软误报
+- Excelize 直接兼容快麦等导出的 xlsx (Python openpyxl 报 Fill 错误)
+- 现代 Web 前端界面 (HTML/JS 暗色主题)
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+## 结构
+```
+main.go          Wails 入口
+app.go           App 绑定(暴露给前端的方法)
+backend/
+  match.go       表格核对核心逻辑 (Excelize)
+frontend/        HTML/JS 前端界面
+.github/workflows/build-wails.yml  Windows EXE 构建 (tag w* 触发)
+```
 
-## Live Development
+## 本地开发
+```bash
+# 后端逻辑测试(无需GUI)
+go run ./test <源表> <目标表> <源键> <目标键> [映射 源:目标...]
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+# Wails 全量构建
+wails build
+```
 
-## Building
+## 已实测
+- 快麦售后明细 (235行/42列) 表格核对: 216 行全部匹配 ✓
+- Wails 前端构建 ✓
 
-To build a redistributable, production mode package, use `wails build`.
+BY 大萝北拔萝卜
