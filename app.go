@@ -58,9 +58,13 @@ func (a *App) ListSheets(path string) ([]string, error) {
 	return backend.ListSheets(path)
 }
 
-// 开票: 生成xlsx (返回outPath/errors)
-func (a *App) GenerateInvoice(invoices []*backend.Invoice, fixed backend.FixedContent, templatePath, outPath string) (string, []string, error) {
-	return backend.GenerateInvoiceXlsx(invoices, fixed, templatePath, outPath)
+// 开票: 生成xlsx (返回单对象, 避免多返回值JS解构问题)
+func (a *App) GenerateInvoice(invoices []*backend.Invoice, fixed backend.FixedContent, templatePath, outPath string) (*backend.InvoiceResult, error) {
+	path, errs, err := backend.GenerateInvoiceXlsx(invoices, fixed, templatePath, outPath)
+	if err != nil {
+		return nil, err
+	}
+	return &backend.InvoiceResult{Path: path, Errors: errs}, nil
 }
 
 // 选择保存路径(开票输出)

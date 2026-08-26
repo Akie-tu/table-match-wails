@@ -56,6 +56,20 @@ export namespace backend {
 	        this.tax_rate = source["tax_rate"];
 	    }
 	}
+	export class InvoiceResult {
+	    path: string;
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new InvoiceResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.errors = source["errors"];
+	    }
+	}
 	export class MatchResult {
 	    matched: number;
 	    multi: number;

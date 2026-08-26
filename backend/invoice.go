@@ -7,20 +7,26 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// 发票数据结构
+// 发票数据
 type Invoice struct {
-	InvoiceType  string `json:"invoice_type"`  // 发票类型
-	TaxIncluded  string `json:"tax_included"`  // 是否含税
-	IsNatural    string `json:"is_natural"`    // 自然人标识
-	Buyer        string `json:"buyer"`         // 购买方名称
-	TaxID        string `json:"tax_id"`        // 纳税人识别号
-	Remark       string `json:"remark"`        // 备注
-	ItemName     string `json:"item_name"`     // 项目名称
-	TaxCode      string `json:"tax_code"`      // 税收编码
-	Unit         string `json:"unit"`          // 单位
-	Qty          string `json:"qty"`           // 数量
-	Amount       string `json:"amount"`        // 金额
-	TaxRate      string `json:"tax_rate"`      // 税率
+	InvoiceType string `json:"invoice_type"` // 发票类型
+	TaxIncluded string `json:"tax_included"` // 是否含税
+	IsNatural   string `json:"is_natural"`   // 自然人标识
+	Buyer       string `json:"buyer"`        // 购买方名称
+	TaxID       string `json:"tax_id"`       // 纳税人识别号
+	Remark      string `json:"remark"`       // 备注
+	ItemName    string `json:"item_name"`    // 项目名称
+	TaxCode     string `json:"tax_code"`     // 税收编码
+	Unit        string `json:"unit"`         // 单位
+	Qty         string `json:"qty"`          // 数量
+	Amount      string `json:"amount"`       // 金额
+	TaxRate     string `json:"tax_rate"`     // 税率
+}
+
+// 生成结果(供前端单对象返回)
+type InvoiceResult struct {
+	Path   string   `json:"path"`
+	Errors []string `json:"errors"`
 }
 
 // 基本信息表列号

@@ -130,35 +130,103 @@ function invCollect() {
     });
 }
 
-// 批量粘贴: Ctrl+V 支持 Excel 多行多列(Tab=列, 换行=行)
-// 列顺序: 名称,税号,自然人,数量,金额,备注 (与表格一致)
-const PASTE_COLS = ['buyer', 'tax_id', 'is_natural', 'qty', 'amount', 'remark'];
-document.addEventListener('keydown', (e) => {
+// ---------- 批量粘贴(智能识别, 参考旧项目) ----------
+// 清洗单元格: 去货币符号/空格/千分位逗号
+function cleanCell(s) {
+    return String(s == null ? '' : s).trim()
+        .replace(/[¥￥$€\u00A0]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/,/g, '');
+}
+function isNum(s) { return s !== '' && /^[+-]?\d+(\.\d+)?$/.test(s); }
+
+// 智能识别粘贴: 支持 单列/两列/多列
+// 列类型: text(文字) / amount(含小数) / qty(≤4位整数) / tax_id(≥15位长数字) / remark(>4位数字)
+function invSmartPaste(lines) {
+    const rows = lines.map((l) => l.split('\t').map(cleanCell));
+    const ncols = Math.max(...rows.map((r) => r.length));
+    if (!ncols) return 0;
+
+    // 每列分类
+    const colType = [];
+    for (let j = 0; j < ncols; j++) {
+        const vals = rows.map((r) => r[j] || '').filter((v) => v !== '');
+        if (vals.length && vals.every(isNum)) {
+            const hasDec = vals.some((v) => v.includes('.'));
+            const maxLen = Math.max(...vals.map((v) => v.length));
+            if (hasDec) colType[j] = 'amount';
+            else if (maxLen >= 15) colType[j] = 'tax_id';
+            else if (maxLen <= 4) colType[j] = 'qty';
+            else colType[j] = 'remark';
+        } else {
+            colType[j] = 'text';
+        }
+    }
+
+    // 分配列映射: 列索引 -> 字段
+    const mapping = {};
+    const used = new Set();
+    // 名称 = 第一个文字列
+    const nameCol = colType.findIndex((t) => t === 'text');
+    if (nameCol >= 0) { mapping[nameCol] = 'buyer'; used.add(nameCol); }
+    // 金额列(含小数优先)
+    colType.forEach((t, i) => { if (t === 'amount' && !used.has(i)) { mapping[i] = 'amount'; used.add(i); } });
+    // 数量列
+    colType.forEach((t, i) => { if (t === 'qty' && !used.has(i)) { mapping[i] = 'qty'; used.add(i); } });
+    // 税号列
+    colType.forEach((t, i) => { if (t === 'tax_id' && !used.has(i)) { mapping[i] = 'tax_id'; used.add(i); } });
+    // 备注列
+    colType.forEach((t, i) => { if (t === 'remark' && !used.has(i)) { mapping[i] = 'remark'; used.add(i); } });
+    // 剩余文字列(第2个起): tax_id → remark
+    let fi = 0;
+    const restFields = ['tax_id', 'remark'];
+    colType.forEach((t, i) => { if (t === 'text' && !used.has(i) && fi < restFields.length) { mapping[i] = restFields[fi++]; used.add(i); } });
+
+    // 追加行
+    let added = 0;
+    rows.forEach((cells) => {
+        const row = { invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
+            buyer: '', tax_id: '', is_natural: '', qty: '', amount: '', remark: '',
+            item_name: '', tax_code: '', unit: '', tax_rate: '' };
+        let hasVal = false;
+        cells.forEach((c, j) => {
+            if (c === '') return;
+            const f = mapping[j];
+            if (f && row[f] === '') { row[f] = c; hasVal = true; }
+        });
+        if (hasVal) { invRows.push(row); added++; }
+    });
+    return added;
+}
+
+// Ctrl+V: 焦点在发票Tab任意位置都拦截做智能粘贴
+document.addEventListener('keydown', async (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'v') return;
     const active = document.activeElement;
     if (!active || !active.closest('#tab-invoice')) return;
-    // 输入框内正常粘贴, 表格区域空白处或body粘贴=批量
-    if (active.tagName === 'INPUT') return;
     e.preventDefault();
-    navigator.clipboard.readText().then((txt) => {
-        if (!txt) return;
-        invCollect();
-        const lines = txt.split(/\r?\n/).filter((l) => l.trim() !== '');
-        let added = 0;
-        lines.forEach((line) => {
-            const cells = line.split('\t').map((c) => c.trim());
-            if (!cells[0]) return;
-            const row = { invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
-                buyer: '', tax_id: '', is_natural: '', qty: '', amount: '', remark: '',
-                item_name: '', tax_code: '', unit: '', tax_rate: '' };
-            cells.forEach((c, j) => {
-                if (j < PASTE_COLS.length) row[PASTE_COLS[j]] = c;
-            });
-            invRows.push(row);
-            added++;
-        });
-        if (added) { invRender(); alert(`✔ 已粘贴 ${added} 行`); }
-    }).catch(() => {});
+    let txt = '';
+    try { txt = await navigator.clipboard.readText(); } catch (err) { return; }
+    if (!txt) return;
+    invCollect();
+    const lines = txt.split(/\r?\n/).filter((l) => l.trim() !== '');
+    if (!lines.length) return;
+    // 单行单列 → 填入当前焦点单元格(若有)
+    if (lines.length === 1 && !lines[0].includes('\t') && active.tagName === 'INPUT') {
+        const keyMap = { 'cell-buyer': 'buyer', 'cell-taxid': 'tax_id', 'cell-qty': 'qty', 'cell-amount': 'amount', 'cell-remark': 'remark' };
+        const key = keyMap[active.className];
+        const tr = active.closest('tr');
+        if (key && tr) {
+            const idx = [...tr.parentElement.children].indexOf(tr);
+            if (idx >= 0 && invRows[idx]) {
+                invRows[idx][key] = cleanCell(lines[0]);
+                invRender();
+                return;
+            }
+        }
+    }
+    const added = invSmartPaste(lines);
+    if (added) { invRender(); alert(`✔ 已粘贴 ${added} 行(智能识别列)`); }
 });
 
 // 删除列: 清空选中列所有行的数据
@@ -224,16 +292,12 @@ async function invGenerate() {
     res.classList.remove('hidden');
     res.innerHTML = '⏳ 生成中…';
     try {
-        const [path, errs, err] = await GenerateInvoice(invRows, fixed, $('invTpl').value.trim(), out);
-        if (errs && errs.length) {
-            res.innerHTML = `<div class="err">❌ 校验失败:<br/>${errs.join('<br/>')}</div>`;
+        const r = await GenerateInvoice(invRows, fixed, $('invTpl').value.trim(), out);
+        if (r.errors && r.errors.length) {
+            res.innerHTML = `<div class="err">❌ 校验失败:<br/>${r.errors.join('<br/>')}</div>`;
             return;
         }
-        if (err) {
-            res.innerHTML = `<div class="err">❌ ${err}</div>`;
-            return;
-        }
-        res.innerHTML = `<div class="ok">✅ 生成成功: ${path}</div>`;
+        res.innerHTML = `<div class="ok">✅ 生成成功: ${r.path}</div>`;
     } catch (e) {
         res.innerHTML = `<div class="err">❌ ${e}</div>`;
     }
