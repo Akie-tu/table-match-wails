@@ -17,7 +17,8 @@
         <!-- Tab导航 -->
         <nav class="tabs">
             <button class="tab active" data-tab="match">① 表格核对</button>
-            <button class="tab" data-tab="about">② 关于</button>
+            <button class="tab" data-tab="invoice">② 开票生成</button>
+            <button class="tab" data-tab="about">③ 关于</button>
         </nav>
 
         <!-- 表格核对 -->
@@ -66,6 +67,61 @@
             </div>
 
             <div id="result" class="result hidden"></div>
+        </section>
+
+        <!-- 开票生成 -->
+        <section id="tab-invoice" class="panel">
+            <div class="card">
+                <h3>1. 固定内容 (默认值, 个别发票可在表格内修改)</h3>
+                <div class="row">
+                    <label>发票类型</label>
+                    <select id="invType">
+                        <option>普通发票</option>
+                        <option>增值税专用发票</option>
+                    </select>
+                    <label>含税</label>
+                    <select id="invTaxInc">
+                        <option>是</option>
+                        <option>否</option>
+                    </select>
+                    <label>项目名称</label><input id="invItem" value="滤芯"/>
+                    <label>税收编码</label><input id="invCode" value="1090130020000000000"/>
+                    <label>单位</label><input id="invUnit" value="个"/>
+                    <label>税率</label><input id="invRate" value="0.01"/>
+                </div>
+                <div class="row">
+                    <label>开票模板</label>
+                    <input id="invTpl" placeholder="选择官方开票模板(不选则用内置)"/>
+                    <button onclick="pickTemplate()">浏览</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. 发票录入 (每行一张发票, 双击单元格编辑)</h3>
+                <div class="table-wrap">
+                    <table id="invTable">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>发票类型</th><th>含税</th><th>购买方名称</th>
+                                <th>税号</th><th>自然人</th><th>数量</th><th>金额</th><th>备注</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="row btn-row">
+                    <button class="small" onclick="invAddRow()">＋ 新增一行</button>
+                    <button class="small" onclick="invDelSel()">删除选中</button>
+                    <button class="small" onclick="invImportDetail()">📥 导入明细</button>
+                    <button class="small" onclick="invClear()">清空</button>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="primary" onclick="invGenerate()">▶ 生成开票xlsx</button>
+            </div>
+            <div id="invResult" class="result hidden"></div>
         </section>
 
         <!-- 关于 -->

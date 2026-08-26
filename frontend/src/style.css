@@ -73,3 +73,25 @@ button.del { background: transparent; border-color: transparent; color: var(--da
 ul { padding-left: 20px; font-size: 14px; line-height: 1.9; }
 p { font-size: 14px; line-height: 1.7; margin-bottom: 8px; }
 .muted { color: var(--muted); }
+
+/* 开票表格 */
+.table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
+#invTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+#invTable th { background: #182330; color: var(--accent); padding: 8px 6px; position: sticky; top: 0; text-align: left; white-space: nowrap; }
+#invTable td { padding: 3px 6px; border-top: 1px solid var(--border); }
+#invTable tr.sel { background: #1d3a2c; }
+#invTable .idx { color: var(--muted); text-align: center; width: 42px; }
+#invTable input {
+    background: transparent; border: 1px solid transparent; color: var(--text);
+    padding: 5px 6px; border-radius: 4px; width: 100%; min-width: 70px; box-sizing: border-box; font-size: 13px;
+}
+#invTable input:focus { border-color: var(--accent); outline: none; background: #182330; }
+#invTable select {
+    background: #182330; border: 1px solid var(--border); color: var(--text);
+    padding: 5px 4px; border-radius: 4px; font-size: 13px;
+}
+.btn-row { margin-top: 6px; }
+select {
+    background: #182330; border: 1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius: 6px; font-size: 13px;
+}

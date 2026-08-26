@@ -57,3 +57,20 @@ func (a *App) ReadSheet(path, sheet string) ([][]string, error) {
 func (a *App) ListSheets(path string) ([]string, error) {
 	return backend.ListSheets(path)
 }
+
+// 开票: 生成xlsx (返回outPath/errors)
+func (a *App) GenerateInvoice(invoices []*backend.Invoice, fixed backend.FixedContent, templatePath, outPath string) (string, []string, error) {
+	return backend.GenerateInvoiceXlsx(invoices, fixed, templatePath, outPath)
+}
+
+// 选择保存路径(开票输出)
+func (a *App) SelectSavePath(suggestName string) (string, error) {
+	opts := runtime.SaveDialogOptions{
+		Title:           "保存开票文件",
+		DefaultFilename: suggestName,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Excel", Pattern: "*.xlsx"},
+		},
+	}
+	return runtime.SaveFileDialog(a.ctx, opts)
+}
