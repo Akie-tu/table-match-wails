@@ -95,3 +95,10 @@ select {
     background: #182330; border: 1px solid var(--border); color: var(--text);
     padding: 7px 10px; border-radius: 6px; font-size: 13px;
 }
+/* 固定内容: 均匀网格布局 */
+.fixed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 16px; }
+.fg { display: flex; flex-direction: column; gap: 4px; }
+.fg label { font-size: 12px; color: var(--muted); }
+.fg select, .fg input { width: 100%; box-sizing: border-box; }
+.sep { color: var(--border); margin: 0 6px; }
+.cl { min-width: auto !important; font-size: 13px !important; }

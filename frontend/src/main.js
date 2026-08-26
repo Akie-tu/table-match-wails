@@ -97,7 +97,11 @@ function invRender() {
             <td><select class="cell-taxinc">${TAX_INCS.map(t => `<option ${t === r.tax_included ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
             <td><input class="cell-buyer" value="${esc(r.buyer)}" placeholder="购买方名称"/></td>
             <td><input class="cell-taxid" value="${esc(r.tax_id)}" placeholder="税号"/></td>
-            <td><input class="cell-natural" value="${esc(r.is_natural)}" placeholder="是/否"/></td>
+            <td><select class="cell-natural">
+                <option value="">—</option>
+                <option value="是" ${r.is_natural === '是' ? 'selected' : ''}>是</option>
+                <option value="否" ${r.is_natural === '否' ? 'selected' : ''}>否</option>
+            </select></td>
             <td><input class="cell-qty" value="${esc(r.qty)}" placeholder="数量"/></td>
             <td><input class="cell-amount" value="${esc(r.amount)}" placeholder="金额"/></td>
             <td><input class="cell-remark" value="${esc(r.remark)}" placeholder="备注"/></td>
@@ -118,13 +122,59 @@ function invCollect() {
             invRows[i].tax_included = tr.querySelector('.cell-taxinc').value;
             invRows[i].buyer = tr.querySelector('.cell-buyer').value.trim();
             invRows[i].tax_id = tr.querySelector('.cell-taxid').value.trim();
-            invRows[i].is_natural = tr.querySelector('.cell-natural').value.trim();
+            invRows[i].is_natural = tr.querySelector('.cell-natural').value;
             invRows[i].qty = tr.querySelector('.cell-qty').value.trim();
             invRows[i].amount = tr.querySelector('.cell-amount').value.trim();
             invRows[i].remark = tr.querySelector('.cell-remark').value.trim();
         }
     });
 }
+
+// 批量粘贴: Ctrl+V 支持 Excel 多行多列(Tab=列, 换行=行)
+// 列顺序: 名称,税号,自然人,数量,金额,备注 (与表格一致)
+const PASTE_COLS = ['buyer', 'tax_id', 'is_natural', 'qty', 'amount', 'remark'];
+document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'v') return;
+    const active = document.activeElement;
+    if (!active || !active.closest('#tab-invoice')) return;
+    // 输入框内正常粘贴, 表格区域空白处或body粘贴=批量
+    if (active.tagName === 'INPUT') return;
+    e.preventDefault();
+    navigator.clipboard.readText().then((txt) => {
+        if (!txt) return;
+        invCollect();
+        const lines = txt.split(/\r?\n/).filter((l) => l.trim() !== '');
+        let added = 0;
+        lines.forEach((line) => {
+            const cells = line.split('\t').map((c) => c.trim());
+            if (!cells[0]) return;
+            const row = { invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
+                buyer: '', tax_id: '', is_natural: '', qty: '', amount: '', remark: '',
+                item_name: '', tax_code: '', unit: '', tax_rate: '' };
+            cells.forEach((c, j) => {
+                if (j < PASTE_COLS.length) row[PASTE_COLS[j]] = c;
+            });
+            invRows.push(row);
+            added++;
+        });
+        if (added) { invRender(); alert(`✔ 已粘贴 ${added} 行`); }
+    }).catch(() => {});
+});
+
+// 删除列: 清空选中列所有行的数据
+function invClearCol() {
+    const col = $('invClearCol').value;
+    const keyMap = { '发票类型': 'invoice_type', '含税': 'tax_included', '名称': 'buyer',
+        '税号': 'tax_id', '自然人': 'is_natural', '数量': 'qty', '金额': 'amount', '备注': 'remark' };
+    const key = keyMap[col];
+    if (!key) return;
+    if (!confirm(`清空「${col}」列所有行的数据？`)) return;
+    invCollect();
+    invRows.forEach((r) => { r[key] = ''; });
+    invRender();
+    alert(`✔ 已清空「${col}」列`);
+}
+window.invClearCol = invClearCol;
 
 function invAddRow() {
     invCollect();

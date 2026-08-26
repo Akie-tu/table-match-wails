@@ -17,7 +17,7 @@
         <!-- Tab导航 -->
         <nav class="tabs">
             <button class="tab active" data-tab="match">① 表格核对</button>
-            <button class="tab" data-tab="invoice">② 开票生成</button>
+            <button class="tab" data-tab="invoice">② 发票处理</button>
             <button class="tab" data-tab="about">③ 关于</button>
         </nav>
 
@@ -69,27 +69,27 @@
             <div id="result" class="result hidden"></div>
         </section>
 
-        <!-- 开票生成 -->
+        <!-- 发票处理 -->
         <section id="tab-invoice" class="panel">
             <div class="card">
                 <h3>1. 固定内容 (默认值, 个别发票可在表格内修改)</h3>
-                <div class="row">
-                    <label>发票类型</label>
-                    <select id="invType">
-                        <option>普通发票</option>
-                        <option>增值税专用发票</option>
-                    </select>
-                    <label>含税</label>
-                    <select id="invTaxInc">
-                        <option>是</option>
-                        <option>否</option>
-                    </select>
-                    <label>项目名称</label><input id="invItem" value="滤芯"/>
-                    <label>税收编码</label><input id="invCode" value="1090130020000000000"/>
-                    <label>单位</label><input id="invUnit" value="个"/>
-                    <label>税率</label><input id="invRate" value="0.01"/>
+                <div class="fixed-grid">
+                    <div class="fg"><label>发票类型</label>
+                        <select id="invType">
+                            <option>普通发票</option>
+                            <option>增值税专用发票</option>
+                        </select></div>
+                    <div class="fg"><label>含税</label>
+                        <select id="invTaxInc">
+                            <option>是</option>
+                            <option>否</option>
+                        </select></div>
+                    <div class="fg"><label>项目名称</label><input id="invItem" value="滤芯"/></div>
+                    <div class="fg"><label>税收编码</label><input id="invCode" value="1090130020000000000"/></div>
+                    <div class="fg"><label>单位</label><input id="invUnit" value="个"/></div>
+                    <div class="fg"><label>税率</label><input id="invRate" value="0.01"/></div>
                 </div>
-                <div class="row">
+                <div class="row" style="margin-top:10px">
                     <label>开票模板</label>
                     <input id="invTpl" placeholder="选择官方开票模板(不选则用内置)"/>
                     <button onclick="pickTemplate()">浏览</button>
@@ -97,7 +97,7 @@
             </div>
 
             <div class="card">
-                <h3>2. 发票录入 (每行一张发票, 双击单元格编辑)</h3>
+                <h3>2. 发票录入 (每行一张发票, 双击单元格编辑; 复制Excel多行直接Ctrl+V粘贴)</h3>
                 <div class="table-wrap">
                     <table id="invTable">
                         <thead>
@@ -115,6 +115,14 @@
                     <button class="small" onclick="invDelSel()">删除选中</button>
                     <button class="small" onclick="invImportDetail()">📥 导入明细</button>
                     <button class="small" onclick="invClear()">清空</button>
+                    <span class="sep">|</span>
+                    <label class="cl">清空列:</label>
+                    <select id="invClearCol">
+                        <option>发票类型</option><option>含税</option><option>名称</option>
+                        <option>税号</option><option>自然人</option><option>数量</option>
+                        <option>金额</option><option>备注</option>
+                    </select>
+                    <button class="small" onclick="invClearCol()">删除该列</button>
                 </div>
             </div>
 
