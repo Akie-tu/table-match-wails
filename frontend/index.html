@@ -18,7 +18,9 @@
         <nav class="tabs">
             <button class="tab active" data-tab="match">① 表格核对</button>
             <button class="tab" data-tab="invoice">② 发票处理</button>
-            <button class="tab" data-tab="about">③ 关于</button>
+            <button class="tab" data-tab="img">③ 图片转JPG</button>
+            <button class="tab" data-tab="email">④ 邮箱发送</button>
+            <button class="tab" data-tab="about">⑤ 关于</button>
         </nav>
 
         <!-- 表格核对 -->
@@ -130,6 +132,83 @@
                 <button class="primary" onclick="invGenerate()">▶ 生成发票文档</button>
             </div>
             <div id="invResult" class="result hidden"></div>
+        </section>
+
+        <!-- 图片转JPG -->
+        <section id="tab-img" class="panel">
+            <div class="card">
+                <h3>1. 选择文件夹</h3>
+                <div class="row">
+                    <label>源文件夹</label>
+                    <input id="imgSrc" placeholder="点击选择…" readonly/>
+                    <button onclick="pickImgDir('src')">浏览</button>
+                </div>
+                <div class="row">
+                    <label>输出文件夹</label>
+                    <input id="imgOut" placeholder="默认: 源文件夹_jpg" readonly/>
+                    <button onclick="pickImgDir('out')">浏览</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. 转换设置</h3>
+                <div class="row">
+                    <label>JPG质量</label>
+                    <input id="imgQ" type="number" value="92" min="1" max="100" style="max-width:80px"/>
+                    <span class="muted">(1-100, 默认92)</span>
+                </div>
+                <div class="row">
+                    <label><input type="checkbox" id="imgOverwrite" checked/> 覆盖已有JPG</label>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="primary" onclick="runImgConvert()">▶ 开始转换</button>
+            </div>
+            <div id="imgResult" class="result hidden"></div>
+        </section>
+
+        <!-- 邮箱发送 -->
+        <section id="tab-email" class="panel">
+            <div class="card">
+                <h3>1. 邮箱设置</h3>
+                <div class="row">
+                    <label>服务商</label>
+                    <select id="mailProvider" onchange="mailPreset()">
+                        <option value="qq">QQ邮箱</option>
+                        <option value="163">163邮箱</option>
+                    </select>
+                    <button class="small" onclick="mailConfigDlg()">⚙ 设置邮箱</button>
+                    <span id="mailCfgState" class="muted">未配置</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. 邮件内容</h3>
+                <div class="row">
+                    <label>收件人</label>
+                    <input id="mailTo" placeholder="xxx@qq.com"/>
+                </div>
+                <div class="row">
+                    <label>主题</label>
+                    <input id="mailSubject"/>
+                </div>
+                <div class="row" style="align-items:flex-start">
+                    <label>正文</label>
+                    <textarea id="mailBody" rows="6" placeholder="邮件正文…"></textarea>
+                </div>
+                <div class="row">
+                    <label>附件</label>
+                    <input id="mailAttach" placeholder="无附件" readonly/>
+                    <button class="small" onclick="mailPickAttach()">添加附件</button>
+                    <button class="small" onclick="mailClearAttach()">清除</button>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="primary" onclick="mailSend()">📧 发送邮件</button>
+            </div>
+            <div id="mailResult" class="result hidden"></div>
         </section>
 
         <!-- 关于 -->

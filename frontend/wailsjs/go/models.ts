@@ -1,12 +1,46 @@
 export namespace backend {
 	
+	export class EmailConfig {
+	    sender_email: string;
+	    auth_code: string;
+	    smtp_host: string;
+	    smtp_port: string;
+	    sender_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EmailConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sender_email = source["sender_email"];
+	        this.auth_code = source["auth_code"];
+	        this.smtp_host = source["smtp_host"];
+	        this.smtp_port = source["smtp_port"];
+	        this.sender_name = source["sender_name"];
+	    }
+	}
+	export class EmailResult {
+	    ok: boolean;
+	    msg: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EmailResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.msg = source["msg"];
+	    }
+	}
 	export class FixedContent {
-	    InvoiceType: string;
-	    TaxIncluded: string;
-	    ItemName: string;
-	    TaxCode: string;
-	    Unit: string;
-	    TaxRate: string;
+	    invoice_type: string;
+	    tax_included: string;
+	    item_name: string;
+	    tax_code: string;
+	    unit: string;
+	    tax_rate: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new FixedContent(source);
@@ -14,12 +48,32 @@ export namespace backend {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.InvoiceType = source["InvoiceType"];
-	        this.TaxIncluded = source["TaxIncluded"];
-	        this.ItemName = source["ItemName"];
-	        this.TaxCode = source["TaxCode"];
-	        this.Unit = source["Unit"];
-	        this.TaxRate = source["TaxRate"];
+	        this.invoice_type = source["invoice_type"];
+	        this.tax_included = source["tax_included"];
+	        this.item_name = source["item_name"];
+	        this.tax_code = source["tax_code"];
+	        this.unit = source["unit"];
+	        this.tax_rate = source["tax_rate"];
+	    }
+	}
+	export class ImgConvertResult {
+	    total: number;
+	    converted: number;
+	    copied: number;
+	    failed: number;
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ImgConvertResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total = source["total"];
+	        this.converted = source["converted"];
+	        this.copied = source["copied"];
+	        this.failed = source["failed"];
+	        this.errors = source["errors"];
 	    }
 	}
 	export class Invoice {

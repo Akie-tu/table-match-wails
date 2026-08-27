@@ -83,3 +83,35 @@ func (a *App) SelectSavePath(suggestName string) (string, error) {
 func (a *App) ImportInvoiceDetail(path string) (*backend.ImportResult, error) {
 	return backend.ImportInvoiceDetail(path)
 }
+
+// 选择文件夹(图片转换源/输出)
+func (a *App) SelectDir() (string, error) {
+	opts := runtime.OpenDialogOptions{Title: "选择文件夹"}
+	return runtime.OpenDirectoryDialog(a.ctx, opts)
+}
+
+// 批量图片转JPG
+func (a *App) RunImgConvert(srcRoot, outRoot string, quality int) (*backend.ImgConvertResult, error) {
+	return backend.RunImgConvert(srcRoot, outRoot, quality)
+}
+
+// 邮箱: 保存配置
+func (a *App) SaveEmailConfig(cfg *backend.EmailConfig) error {
+	return backend.SaveEmailConfig(cfg)
+}
+
+// 邮箱: 读取配置
+func (a *App) LoadEmailConfig() (*backend.EmailConfig, error) {
+	return backend.LoadEmailConfig()
+}
+
+// 邮箱: 发送(带附件)
+func (a *App) SendEmail(cfg *backend.EmailConfig, to, subject, body string, attachments []string) (*backend.EmailResult, error) {
+	return backend.SendEmail(cfg, to, subject, body, attachments)
+}
+
+// 邮箱: 预设
+func (a *App) EmailPreset(provider string) (string, string, error) {
+	h, p := backend.EmailPreset(provider)
+	return h, p, nil
+}

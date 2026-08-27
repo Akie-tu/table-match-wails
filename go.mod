@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/wailsapp/wails/v2 v2.15.0
 	github.com/xuri/excelize/v2 v2.11.0
+	golang.org/x/image v0.45.0
 )
 
 require (
@@ -39,8 +40,8 @@ require (
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )
 
 // replace github.com/wailsapp/wails/v2 v2.15.0 => /mnt/ssd/gopath/pkg/mod

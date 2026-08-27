@@ -2,7 +2,7 @@
 import './style.css';
 
 // Wails 注入的绑定 (v2 自动生成于 frontend/wailsjs/go/main/App.js)
-import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail } from '../wailsjs/go/main/App';
+import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset } from '../wailsjs/go/main/App';
 
 const $ = (id) => document.getElementById(id);
 
@@ -351,5 +351,113 @@ async function invImportDetail() {
 }
 window.invImportDetail = invImportDetail;
 
+// ================= 图片转JPG =================
+async function pickImgDir(kind) {
+    const dir = await SelectDir();
+    if (dir) {
+        if (kind === 'src') {
+            $('imgSrc').value = dir;
+            if (!$('imgOut').value.trim()) $('imgOut').value = dir.replace(/[\\/]+$/, '') + '_jpg';
+        } else {
+            $('imgOut').value = dir;
+        }
+    }
+}
+window.pickImgDir = pickImgDir;
+
+async function runImgConvert() {
+    const src = $('imgSrc').value.trim();
+    if (!src) { alert('请选择源文件夹'); return; }
+    const out = $('imgOut').value.trim() || src.replace(/[\\/]+$/, '') + '_jpg';
+    const q = parseInt($('imgQ').value) || 92;
+    const res = $('imgResult');
+    res.classList.remove('hidden');
+    res.innerHTML = '⏳ 转换中…';
+    try {
+        const r = await RunImgConvert(src, out, q);
+        res.innerHTML = `
+            <div class="ok">✅ 完成: 总 <b>${r.total}</b> | 转换 <b>${r.converted}</b> | 复制 <b>${r.copied}</b> | 失败 <b>${r.failed}</b></div>
+            <div class="muted">输出: ${out}</div>
+            ${r.errors && r.errors.length ? `<div class="warn">${r.errors.slice(0, 10).join('<br/>')}</div>` : ''}`;
+    } catch (e) {
+        res.innerHTML = `<div class="err">❌ ${e}</div>`;
+    }
+}
+window.runImgConvert = runImgConvert;
+
+// ================= 邮箱发送 =================
+let mailCfg = null;
+let mailAttachments = [];
+
+async function mailInit() {
+    try {
+        mailCfg = await LoadEmailConfig();
+        if (mailCfg && mailCfg.sender_email) {
+            $('mailCfgState').textContent = `已配置: ${mailCfg.sender_email}`;
+        }
+    } catch (e) { /* 未配置 */ }
+}
+window.mailInit = mailInit;
+
+async function mailPreset() {
+    const p = $('mailProvider').value;
+    const [host, port] = await EmailPreset(p);
+    if (mailCfg) { mailCfg.smtp_host = host; mailCfg.smtp_port = port; }
+}
+window.mailPreset = mailPreset;
+
+function mailConfigDlg() {
+    // 用简易表单收集配置(prompt方式在WebView2可用)
+    const email = prompt('发件邮箱:', mailCfg?.sender_email || '');
+    if (email === null) return;
+    const code = prompt('SMTP授权码:', mailCfg?.auth_code || '');
+    if (code === null) return;
+    const name = prompt('发件人显示名(纯英文):', mailCfg?.sender_name || 'chibarin') || 'chibarin';
+    const p = $('mailProvider').value;
+    EmailPreset(p).then(([host, port]) => {
+        mailCfg = { sender_email: email.trim(), auth_code: code.trim(), smtp_host: host, smtp_port: port, sender_name: name.trim() };
+        SaveEmailConfig(mailCfg).then(() => {
+            $('mailCfgState').textContent = `已配置: ${email.trim()}`;
+            alert('✅ 邮箱配置已保存');
+        }).catch((e) => alert('保存失败: ' + e));
+    });
+}
+window.mailConfigDlg = mailConfigDlg;
+
+async function mailPickAttach() {
+    const path = await SelectFile();
+    if (path) {
+        mailAttachments.push(path);
+        $('mailAttach').value = mailAttachments.map((p) => p.split(/[\\/]/).pop()).join('; ');
+    }
+}
+window.mailPickAttach = mailPickAttach;
+
+function mailClearAttach() {
+    mailAttachments = [];
+    $('mailAttach').value = '';
+}
+window.mailClearAttach = mailClearAttach;
+
+async function mailSend() {
+    if (!mailCfg || !mailCfg.sender_email) { alert('请先设置邮箱'); return; }
+    const to = $('mailTo').value.trim();
+    const subject = $('mailSubject').value.trim();
+    const body = $('mailBody').value;
+    if (!to) { alert('请填写收件人'); return; }
+    const res = $('mailResult');
+    res.classList.remove('hidden');
+    res.innerHTML = '⏳ 发送中…';
+    try {
+        const r = await SendEmail(mailCfg, to, subject, body, mailAttachments);
+        res.innerHTML = r.ok
+            ? `<div class="ok">✅ ${r.msg}</div>`
+            : `<div class="err">❌ ${r.msg}</div>`;
+    } catch (e) {
+        res.innerHTML = `<div class="err">❌ ${e}</div>`;
+    }
+}
+window.mailSend = mailSend;
+
 // 页面加载后渲染初始空行
-document.addEventListener('DOMContentLoaded', () => { invRender(); });
+document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); });

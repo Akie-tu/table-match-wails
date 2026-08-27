@@ -102,3 +102,9 @@ select {
 .fg select, .fg input { width: 100%; box-sizing: border-box; }
 .sep { color: var(--border); margin: 0 6px; }
 .cl { min-width: auto !important; font-size: 13px !important; }
+textarea {
+    background: #182330; border: 1px solid var(--border); color: var(--text);
+    padding: 8px 10px; border-radius: 6px; flex: 1; font-size: 13px; font-family: inherit;
+    resize: vertical; min-width: 200px;
+}
+textarea:focus { outline: 1px solid var(--accent); }
