@@ -3,7 +3,8 @@ name: Build Wails EXE
 on:
   push:
     tags:
-      - "w*"
+      - "w*"   # 试验版(w0.x)
+      - "v*"   # 正式版(v1.x)
 
 permissions:
   contents: write
