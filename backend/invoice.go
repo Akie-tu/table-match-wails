@@ -53,17 +53,20 @@ const (
 
 // 默认固定内容
 type FixedContent struct {
-	InvoiceType string `json:"invoice_type"` // 发票类型
-	TaxIncluded string `json:"tax_included"` // 是否含税
-	ItemName    string `json:"item_name"`    // 项目名称
-	TaxCode     string `json:"tax_code"`     // 税收编码
-	Unit        string `json:"unit"`         // 单位
-	TaxRate     string `json:"tax_rate"`     // 税率
+	InvoiceType string              `json:"invoice_type"` // 发票类型(默认)
+	TaxIncluded string              `json:"tax_included"` // 是否含税(默认)
+	ItemName    string              `json:"item_name"`    // 项目名称(默认)
+	TaxCode     string              `json:"tax_code"`     // 税收编码(默认)
+	Unit        string              `json:"unit"`         // 单位(默认)
+	TaxRate     string              `json:"tax_rate"`     // 税率(默认)
+	Options     map[string][]string `json:"options"`      // 各字段选项(行级下拉用, 可扩展)
+	// Options键: invoice_type/tax_included/item_name/tax_code/unit/tax_rate
 }
 
+// 默认固定内容: 脚本本身不携带业务默认值
+// 实际值由前端从本地配置文件(fixed_config.json)加载后传入
 func DefaultFixed() FixedContent {
-	return FixedContent{InvoiceType: "普通发票", TaxIncluded: "是", ItemName: "滤芯",
-		TaxCode: "1090130020000000000", Unit: "个", TaxRate: "0.01"}
+	return FixedContent{} // 全部为空
 }
 
 // 流水号: 1 -> "001"
@@ -118,8 +121,8 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// GenerateInvoiceXlsx: 生成开票导入xlsx
-// templatePath: 官方模板路径; 返回 (outPath, 错误列表)
+// 生成开票导入文件: 填数据到官方模板并另存
+// 参数: 官方模板路径; 返回(输出路径, 错误列表)
 func GenerateInvoiceXlsx(invoices []*Invoice, fixed FixedContent, templatePath, outPath string) (string, []string, error) {
 	if len(invoices) == 0 {
 		return "", nil, fmt.Errorf("发票列表为空")

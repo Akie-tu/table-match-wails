@@ -110,8 +110,27 @@ func (a *App) SendEmail(cfg *backend.EmailConfig, to, subject, body string, atta
 	return backend.SendEmail(cfg, to, subject, body, attachments)
 }
 
-// 邮箱: 预设
-func (a *App) EmailPreset(provider string) (string, string, error) {
-	h, p := backend.EmailPreset(provider)
-	return h, p, nil
+// 邮箱: 预设(单对象返回)
+func (a *App) EmailPreset(provider string) backend.PresetResult {
+	return backend.EmailPreset(provider)
+}
+
+// 固定内容: 保存到本地配置文件
+func (a *App) SaveFixedConfig(cfg *backend.FixedContent) error {
+	return backend.SaveFixedConfig(cfg)
+}
+
+// 固定内容: 从本地配置文件读取(无配置返回空)
+func (a *App) LoadFixedConfig() (*backend.FixedContent, error) {
+	return backend.LoadFixedConfig(), nil
+}
+
+// 税号清洗: 仅保留数字和英文
+func (a *App) CleanTaxID(s string) (string, error) {
+	return backend.CleanTaxID(s), nil
+}
+
+// 自动查找本地发票模板(文件名含"批量开票-导入开票模板")
+func (a *App) FindInvoiceTemplate() (string, error) {
+	return backend.FindInvoiceTemplate(), nil
 }

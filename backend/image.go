@@ -79,7 +79,7 @@ func hasAlpha(rgba *image.RGBA) bool {
 	return false
 }
 
-// 简单合成(alpha混合白底)
+// 简单合成(半透明像素与白底混合)
 func drawOver(dst *image.RGBA, src *image.RGBA) {
 	b := src.Bounds()
 	for y := b.Min.Y; y < b.Max.Y; y++ {
@@ -88,7 +88,7 @@ func drawOver(dst *image.RGBA, src *image.RGBA) {
 			if s.A == 255 {
 				dst.SetRGBA(x, y, s)
 			} else if s.A > 0 {
-				// alpha混合
+				// 半透明混合
 				dr := dst.RGBAAt(x, y)
 				a := float64(s.A) / 255.0
 				dr.R = uint8(float64(s.R)*a + float64(dr.R)*(1-a))

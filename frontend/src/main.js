@@ -1,12 +1,12 @@
-// Wails 前端逻辑
+// 前端界面逻辑
 import './style.css';
 
-// Wails 注入的绑定 (v2 自动生成于 frontend/wailsjs/go/main/App.js)
-import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset } from '../wailsjs/go/main/App';
+// 注入的前端绑定方法(由构建工具自动生成)
+import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate } from '../wailsjs/go/main/App';
 
 const $ = (id) => document.getElementById(id);
 
-// ---------- Tab 切换 ----------
+// 标签页切换逻辑
 document.querySelectorAll('.tab').forEach((btn) => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach((b) => b.classList.remove('active'));
@@ -16,7 +16,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     });
 });
 
-// ---------- 映射行 ----------
+// 回填映射行管理
 let mapSeq = 0;
 function addMapRow() {
     const div = document.createElement('div');
@@ -32,7 +32,7 @@ window.addMapRow = addMapRow;
 addMapRow(); // 默认一行
 addMapRow();
 
-// ---------- 选文件 ----------
+// 选择文件
 async function pickFile(kind) {
     try {
         const path = await SelectFile();
@@ -44,7 +44,7 @@ async function pickFile(kind) {
 }
 window.pickFile = pickFile;
 
-// ---------- 开始核对 ----------
+// 开始核对
 async function runMatch() {
     const src = $('srcPath').value.trim();
     const tgt = $('tgtPath').value.trim();
@@ -79,9 +79,9 @@ async function runMatch() {
 }
 window.runMatch = runMatch;
 
-// ================= 开票模块 =================
+// 发票处理模块
 let invRows = [];
-// 初始化预置一行空发票(与Python版一致, 始终可粘贴)
+// 初始化预置一行空发票(与旧版一致, 始终可粘贴)
 function emptyRow() {
     return { invoice_type: '普通发票', tax_included: '是', buyer: '', tax_id: '',
         is_natural: '', qty: '', amount: '', remark: '', item_name: '', tax_code: '', unit: '', tax_rate: '' };
@@ -91,25 +91,35 @@ invRows.push(emptyRow());
 // 发票类型/含税下拉选项
 const INV_TYPES = ['普通发票', '增值税专用发票'];
 const TAX_INCS = ['是', '否'];
+// 项目名称选项(行级下拉, 从配置读取, 可扩展)
+let itemOptions = [];
 
 function invRender() {
     const tbody = document.querySelector('#invTable tbody');
     tbody.innerHTML = '';
+    // 行级下拉生成器(选项来自配置)
+    const optSel = (field, cur) => {
+        const opts = (fixedOptions[field] || []).map((t) => `<option ${t === cur ? 'selected' : ''}>${t}</option>`).join('');
+        return `<select class="cell-${field}">${opts}<option value="" ${!cur ? 'selected' : ''}>—</option></select>`;
+    };
     invRows.forEach((r, i) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="idx">${String(i + 1).padStart(3, '0')}</td>
-            <td><select class="cell-type">${INV_TYPES.map(t => `<option ${t === r.invoice_type ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
-            <td><select class="cell-taxinc">${TAX_INCS.map(t => `<option ${t === r.tax_included ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
-            <td><input class="cell-buyer" value="${esc(r.buyer)}" placeholder="购买方名称"/></td>
-            <td><input class="cell-taxid" value="${esc(r.tax_id)}" placeholder="税号"/></td>
+            <td>${optSel('invoice_type', r.invoice_type)}</td>
+            <td>${optSel('tax_included', r.tax_included)}</td>
+            <td>${optSel('item_name', r.item_name)}</td>
             <td><select class="cell-natural">
                 <option value="">—</option>
                 <option value="是" ${r.is_natural === '是' ? 'selected' : ''}>是</option>
                 <option value="否" ${r.is_natural === '否' ? 'selected' : ''}>否</option>
             </select></td>
+            <td><input class="cell-buyer" value="${esc(r.buyer)}" placeholder="购买方名称"/></td>
+            <td><input class="cell-taxid" value="${esc(r.tax_id)}" placeholder="税号"/></td>
+            <td>${optSel('unit', r.unit)}</td>
             <td><input class="cell-qty" value="${esc(r.qty)}" placeholder="数量"/></td>
             <td><input class="cell-amount" value="${esc(r.amount)}" placeholder="金额"/></td>
+            <td>${optSel('tax_rate', r.tax_rate)}</td>
             <td><input class="cell-remark" value="${esc(r.remark)}" placeholder="备注"/></td>
             <td><button class="del" onclick="invDelRow(${i})">×</button></td>`;
         tr.onclick = () => {
@@ -124,8 +134,12 @@ function esc(s) { return String(s || '').replace(/"/g, '&quot;').replace(/</g, '
 function invCollect() {
     document.querySelectorAll('#invTable tbody tr').forEach((tr, i) => {
         if (invRows[i]) {
-            invRows[i].invoice_type = tr.querySelector('.cell-type').value;
-            invRows[i].tax_included = tr.querySelector('.cell-taxinc').value;
+            invRows[i].invoice_type = tr.querySelector('.cell-invoice_type') ? tr.querySelector('.cell-invoice_type').value : invRows[i].invoice_type;
+            invRows[i].tax_included = tr.querySelector('.cell-tax_included') ? tr.querySelector('.cell-tax_included').value : invRows[i].tax_included;
+            invRows[i].item_name = tr.querySelector('.cell-item_name') ? tr.querySelector('.cell-item_name').value : invRows[i].item_name;
+            invRows[i].tax_code = $('invCode').value || invRows[i].tax_code; // 税收编码用固定内容(批量一致)
+            invRows[i].unit = tr.querySelector('.cell-unit') ? tr.querySelector('.cell-unit').value : invRows[i].unit;
+            invRows[i].tax_rate = tr.querySelector('.cell-tax_rate') ? tr.querySelector('.cell-tax_rate').value : invRows[i].tax_rate;
             invRows[i].buyer = tr.querySelector('.cell-buyer').value.trim();
             invRows[i].tax_id = tr.querySelector('.cell-taxid').value.trim();
             invRows[i].is_natural = tr.querySelector('.cell-natural').value;
@@ -136,7 +150,7 @@ function invCollect() {
     });
 }
 
-// ---------- 批量粘贴(严格按Python主版逻辑) ----------
+// 批量粘贴功能(严格按旧版逻辑)
 // 清洗: 去引号/货币符号/零宽, 裁尾部空列
 function cleanCell(s) {
     return String(s == null ? '' : s)
@@ -147,7 +161,7 @@ function cleanCell(s) {
 }
 String.prototype.stripQ = function () { return this.replace(/^["'""]+|["'""]+$/g, ''); };
 
-// 数字判断(允许逗号/连字符/空格) — 对应Python _looks_like_number
+// 数字判断(允许逗号/连字符/空格) — 与旧版判断逻辑一致
 function looksLikeNumber(s) {
     if (s === '') return false;
     const s2 = String(s).replace(/[,，\-]/g, '').replace(/\s+/g, '');
@@ -155,8 +169,11 @@ function looksLikeNumber(s) {
     return !isNaN(Number(s2));
 }
 
-// 粘贴: 发票Tab激活时全局拦截(焦点在任意位置都生效, 含表格外/下拉/按钮)
+// 粘贴: 发票页激活时全局拦截; 但焦点在输入框/文本域时放行默认粘贴(填充当前格)
 document.addEventListener('paste', (e) => {
+    const active = document.activeElement;
+    // 焦点在输入框/文本域/下拉 → 交给默认行为(单格填充)
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
     const invPanel = $('tab-invoice');
     if (!invPanel || !invPanel.classList.contains('active')) return;
     e.preventDefault();
@@ -165,7 +182,7 @@ document.addEventListener('paste', (e) => {
     if (!txt) return;
     invCollect();
 
-    // 清洗数据(对应Python inv_paste)
+    // 清洗数据(与旧版粘贴逻辑一致)
     const rawRows = txt.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
     const rows = [];
     for (const r of rawRows) {
@@ -178,7 +195,7 @@ document.addEventListener('paste', (e) => {
     // 起始行: 总是从第0行开始填充(用户要求: 任何时候粘贴从第一行开始)
     const startRow = 0;
 
-    // 判断起始列(对应Python start_key)
+    // 判断起始列(与旧版逻辑一致)
     const keyCols = ['invoice_type', 'tax_included', 'buyer', 'tax_id', 'is_natural', 'qty', 'amount', 'remark'];
     const ncols = Math.max(...rows.map((r) => r.length));
     let startKey;
@@ -212,7 +229,7 @@ document.addEventListener('paste', (e) => {
         startKey = 2; // 单列文字→名称
     }
 
-    // 扩展行: 已有行填充, 超出才新增(对应Python while append)
+    // 扩展行: 已有行填充, 超出才新增(与旧版一致)
     const need = startRow + rows.length;
     while (invRows.length < need) {
         invRows.push({ invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
@@ -233,6 +250,9 @@ document.addEventListener('paste', (e) => {
             const key = keyCols[k];
             if (key === 'is_natural') {
                 invRows[idx][key] = val === '是' ? '是' : '';
+            } else if (key === 'tax_id') {
+                // 税号: 仅保留数字和英文(去掉 - 空格 等符号)
+                invRows[idx][key] = val.replace(/[^0-9A-Za-z]/g, '');
             } else {
                 invRows[idx][key] = val;
             }
@@ -296,13 +316,96 @@ async function pickTemplate() {
 }
 window.pickTemplate = pickTemplate;
 
+// 各字段选项(行级下拉, 从配置读取, 可扩展)
+let fixedOptions = {
+    invoice_type: ['普通发票', '增值税专用发票'],
+    tax_included: ['是', '否'],
+    item_name: [], tax_code: [], unit: [], tax_rate: [],
+};
+
+// 填充下拉选项
+function fillSelect(id, opts, cur) {
+    const sel = $(id);
+    sel.innerHTML = opts.map((t) => `<option ${t === cur ? 'selected' : ''}>${t}</option>`).join('') +
+        `<option value="" ${!cur ? 'selected' : ''}>—</option>`;
+    if (cur) sel.value = cur;
+}
+
+// 加载固定内容(从本地配置)
+async function invLoadFixed() {
+    try {
+        const cfg = await LoadFixedConfig();
+        if (cfg) {
+            // 选项(每个字段多选项)
+            if (cfg.options) {
+                for (const k of ['invoice_type', 'tax_included', 'item_name', 'tax_code', 'unit', 'tax_rate']) {
+                    if (cfg.options[k] && cfg.options[k].length) fixedOptions[k] = cfg.options[k];
+                }
+            }
+            fillSelect('invType', fixedOptions.invoice_type, cfg.invoice_type || fixedOptions.invoice_type[0]);
+            fillSelect('invTaxInc', fixedOptions.tax_included, cfg.tax_included || '是');
+            fillSelect('invItem', fixedOptions.item_name, cfg.item_name || '');
+            fillSelect('invCode', fixedOptions.tax_code, cfg.tax_code || '');
+            fillSelect('invUnit', fixedOptions.unit, cfg.unit || '');
+            fillSelect('invRate', fixedOptions.tax_rate, cfg.tax_rate || '');
+        }
+    } catch (e) { /* 无配置 */ }
+    // 自动查找本地发票模板(文件名含"批量开票-导入开票模板")
+    try {
+        const tpl = await FindInvoiceTemplate();
+        if (tpl) $('invTpl').value = tpl;
+    } catch (e) { /* 忽略 */ }
+    invRender();
+}
+window.invLoadFixed = invLoadFixed;
+
+// 应用选项(格式: 税率=0.01,0.03 单位=个,套 ...)
+function invApplyOpts() {
+    const txt = $('invOpts').value.trim();
+    const keyMap = { '发票类型': 'invoice_type', '含税': 'tax_included', '项目名称': 'item_name',
+        '税收编码': 'tax_code', '单位': 'unit', '税率': 'tax_rate',
+        'invoice_type': 'invoice_type', 'tax_included': 'tax_included', 'item_name': 'item_name',
+        'tax_code': 'tax_code', 'unit': 'unit', 'tax_rate': 'tax_rate' };
+    if (txt) {
+        // 支持 空格或换行分隔的 字段=值1,值2
+        txt.split(/\s+/).forEach((pair) => {
+            const eq = pair.indexOf('=');
+            if (eq < 0) return;
+            const k = keyMap[pair.slice(0, eq).trim()];
+            const vals = pair.slice(eq + 1).split(/[,，]/).map((s) => s.trim()).filter((s) => s);
+            if (k && vals.length) fixedOptions[k] = vals;
+        });
+    }
+    // 刷新下拉(保留当前选中)
+    invLoadFixed();
+    alert('✅ 选项已应用(保存固定内容后永久生效)');
+}
+window.invApplyOpts = invApplyOpts;
+
+// 保存固定内容到本地配置
+async function invSaveFixed() {
+    const cfg = {
+        invoice_type: $('invType').value || '', tax_included: $('invTaxInc').value || '',
+        item_name: $('invItem').value || '', tax_code: $('invCode').value || '',
+        unit: $('invUnit').value || '', tax_rate: $('invRate').value || '',
+        options: fixedOptions,
+    };
+    try {
+        await SaveFixedConfig(cfg);
+        alert('✅ 固定内容已保存到本地配置');
+    } catch (e) {
+        alert('保存失败: ' + e);
+    }
+}
+window.invSaveFixed = invSaveFixed;
+
 async function invGenerate() {
     invCollect();
     if (!invRows.length) { alert('请先添加发票行'); return; }
     const fixed = {
         invoice_type: $('invType').value, tax_included: $('invTaxInc').value,
-        item_name: $('invItem').value.trim() || '滤芯', tax_code: $('invCode').value.trim() || '1090130020000000000',
-        unit: $('invUnit').value.trim() || '个', tax_rate: $('invRate').value.trim() || '0.01',
+        item_name: $('invItem').value.trim(), tax_code: $('invCode').value.trim(),
+        unit: $('invUnit').value.trim(), tax_rate: $('invRate').value.trim(),
     };
     const out = await SelectSavePath('开票导入.xlsx');
     if (!out) return;
@@ -337,7 +440,7 @@ async function invImportDetail() {
         // 导入的行直接替换当前表格(从第一行开始)
         invRows = r.rows.map((x) => ({
             invoice_type: x.invoice_type || $('invType').value, tax_included: $('invTaxInc').value,
-            buyer: x.buyer || '', tax_id: x.tax_id || '', is_natural: x.is_natural || '',
+            buyer: x.buyer || '', tax_id: (x.tax_id || '').replace(/[^0-9A-Za-z]/g, ''), is_natural: x.is_natural || '',
             qty: x.qty || '', amount: x.amount || '', remark: x.remark || '',
             item_name: '', tax_code: '', unit: '', tax_rate: '',
         }));
@@ -351,7 +454,7 @@ async function invImportDetail() {
 }
 window.invImportDetail = invImportDetail;
 
-// ================= 图片转JPG =================
+// 图片转JPEG功能模块
 async function pickImgDir(kind) {
     const dir = await SelectDir();
     if (dir) {
@@ -385,7 +488,7 @@ async function runImgConvert() {
 }
 window.runImgConvert = runImgConvert;
 
-// ================= 邮箱发送 =================
+// ================= 邮箱发送模块 =================
 let mailCfg = null;
 let mailAttachments = [];
 
@@ -394,6 +497,9 @@ async function mailInit() {
         mailCfg = await LoadEmailConfig();
         if (mailCfg && mailCfg.sender_email) {
             $('mailCfgState').textContent = `已配置: ${mailCfg.sender_email}`;
+            $('mailEmail').value = mailCfg.sender_email || '';
+            $('mailCode').value = mailCfg.auth_code || '';
+            $('mailName').value = mailCfg.sender_name || 'chibarin';
         }
     } catch (e) { /* 未配置 */ }
 }
@@ -401,28 +507,41 @@ window.mailInit = mailInit;
 
 async function mailPreset() {
     const p = $('mailProvider').value;
-    const [host, port] = await EmailPreset(p);
-    if (mailCfg) { mailCfg.smtp_host = host; mailCfg.smtp_port = port; }
+    const r = await EmailPreset(p);
+    if (mailCfg) { mailCfg.smtp_host = r.host; mailCfg.smtp_port = r.port; }
 }
 window.mailPreset = mailPreset;
 
-function mailConfigDlg() {
-    // 用简易表单收集配置(prompt方式在WebView2可用)
-    const email = prompt('发件邮箱:', mailCfg?.sender_email || '');
-    if (email === null) return;
-    const code = prompt('SMTP授权码:', mailCfg?.auth_code || '');
-    if (code === null) return;
-    const name = prompt('发件人显示名(纯英文):', mailCfg?.sender_name || 'chibarin') || 'chibarin';
+// 保存邮箱配置(页面表单)
+async function mailSave() {
+    const email = $('mailEmail').value.trim();
+    const code = $('mailCode').value.trim();
+    if (!email || !code) { alert('请填写发件邮箱和授权码'); return; }
     const p = $('mailProvider').value;
-    EmailPreset(p).then(([host, port]) => {
-        mailCfg = { sender_email: email.trim(), auth_code: code.trim(), smtp_host: host, smtp_port: port, sender_name: name.trim() };
-        SaveEmailConfig(mailCfg).then(() => {
-            $('mailCfgState').textContent = `已配置: ${email.trim()}`;
-            alert('✅ 邮箱配置已保存');
-        }).catch((e) => alert('保存失败: ' + e));
-    });
+    const r = await EmailPreset(p);
+    mailCfg = {
+        sender_email: email, auth_code: code,
+        smtp_host: r.host, smtp_port: r.port,
+        sender_name: $('mailName').value.trim() || 'chibarin',
+    };
+    try {
+        await SaveEmailConfig(mailCfg);
+        $('mailCfgState').textContent = `已配置: ${email}`;
+        alert('✅ 邮箱配置已保存');
+    } catch (e) {
+        alert('保存失败: ' + e);
+    }
 }
-window.mailConfigDlg = mailConfigDlg;
+window.mailSave = mailSave;
+
+function mailClearCfg() {
+    mailCfg = null;
+    $('mailEmail').value = ''; $('mailCode').value = '';
+    $('mailCfgState').textContent = '未配置';
+    try { SaveEmailConfig({ sender_email: '', auth_code: '', smtp_host: '', smtp_port: '', sender_name: '' }); } catch (e) { /* 忽略 */ }
+    alert('已清除邮箱配置');
+}
+window.mailClearCfg = mailClearCfg;
 
 async function mailPickAttach() {
     const path = await SelectFile();
@@ -459,5 +578,5 @@ async function mailSend() {
 }
 window.mailSend = mailSend;
 
-// 页面加载后渲染初始空行
-document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); });
+// 页面加载后: 渲染初始空行 + 加载邮箱配置 + 加载固定内容配置
+document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); invLoadFixed(); });

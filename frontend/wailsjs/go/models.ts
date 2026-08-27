@@ -41,6 +41,7 @@ export namespace backend {
 	    tax_code: string;
 	    unit: string;
 	    tax_rate: string;
+	    options: Record<string, Array<string>>;
 	
 	    static createFrom(source: any = {}) {
 	        return new FixedContent(source);
@@ -54,6 +55,7 @@ export namespace backend {
 	        this.tax_code = source["tax_code"];
 	        this.unit = source["unit"];
 	        this.tax_rate = source["tax_rate"];
+	        this.options = source["options"];
 	    }
 	}
 	export class ImgConvertResult {
@@ -175,6 +177,20 @@ export namespace backend {
 	        this.multi = source["multi"];
 	        this.notfound = source["notfound"];
 	        this.out_path = source["out_path"];
+	    }
+	}
+	export class PresetResult {
+	    host: string;
+	    port: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PresetResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.host = source["host"];
+	        this.port = source["port"];
 	    }
 	}
 

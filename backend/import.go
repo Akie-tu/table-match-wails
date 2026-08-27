@@ -28,7 +28,7 @@ var importRules = map[string][]string{
 	"remark":       {"备注"},
 }
 
-// 读Excel/CSV为二维字符串(首行表头)
+// 读取表格/文本文件为二维数据(首行是表头)
 func ReadDetailFile(path string) ([][]string, error) {
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext == ".csv" {

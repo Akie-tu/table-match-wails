@@ -74,27 +74,31 @@
         <!-- 发票处理 -->
         <section id="tab-invoice" class="panel">
             <div class="card">
-                <h3>1. 固定内容 (默认值, 个别发票可在表格内修改)</h3>
+                <h3>1. 固定内容 (从本地配置读取, 可修改后保存; 每个字段支持多选项)</h3>
                 <div class="fixed-grid">
                     <div class="fg"><label>发票类型</label>
-                        <select id="invType">
-                            <option>普通发票</option>
-                            <option>增值税专用发票</option>
-                        </select></div>
+                        <select id="invType"></select></div>
                     <div class="fg"><label>含税</label>
-                        <select id="invTaxInc">
-                            <option>是</option>
-                            <option>否</option>
-                        </select></div>
-                    <div class="fg"><label>项目名称</label><input id="invItem" value="滤芯"/></div>
-                    <div class="fg"><label>税收编码</label><input id="invCode" value="1090130020000000000"/></div>
-                    <div class="fg"><label>单位</label><input id="invUnit" value="个"/></div>
-                    <div class="fg"><label>税率</label><input id="invRate" value="0.01"/></div>
+                        <select id="invTaxInc"></select></div>
+                    <div class="fg"><label>项目名称</label>
+                        <select id="invItem"></select></div>
+                    <div class="fg"><label>税收编码</label>
+                        <select id="invCode"></select></div>
+                    <div class="fg"><label>单位</label>
+                        <select id="invUnit"></select></div>
+                    <div class="fg"><label>税率</label>
+                        <select id="invRate"></select></div>
                 </div>
                 <div class="row" style="margin-top:10px">
                     <label>开票模板</label>
                     <input id="invTpl" placeholder="选择官方开票模板(不选则用内置)"/>
                     <button onclick="pickTemplate()">浏览</button>
+                    <button class="small" onclick="invSaveFixed()">💾 保存固定内容</button>
+                </div>
+                <div class="row" style="margin-top:6px">
+                    <label>选项编辑(每行一个, 格式: 字段=值1,值2)</label>
+                    <input id="invOpts" placeholder="税率=0.01,0.03 单位=个,套 税收编码=1090130020000000000,1090130020000000001 项目名称=滤芯,滤网"/>
+                    <button class="small" onclick="invApplyOpts()">应用</button>
                 </div>
             </div>
 
@@ -104,8 +108,8 @@
                     <table id="invTable">
                         <thead>
                             <tr>
-                                <th>#</th><th>发票类型</th><th>含税</th><th>购买方名称</th>
-                                <th>税号</th><th>自然人</th><th>数量</th><th>金额</th><th>备注</th>
+                                <th>#</th><th>发票类型</th><th>含税</th><th>项目名称</th><th>自然人</th><th>购买方名称</th>
+                                <th>税号</th><th>单位</th><th>数量</th><th>金额</th><th>税率</th><th>备注</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -178,8 +182,23 @@
                         <option value="qq">QQ邮箱</option>
                         <option value="163">163邮箱</option>
                     </select>
-                    <button class="small" onclick="mailConfigDlg()">⚙ 设置邮箱</button>
                     <span id="mailCfgState" class="muted">未配置</span>
+                </div>
+                <div class="row">
+                    <label>发件邮箱</label>
+                    <input id="mailEmail" placeholder="xxx@qq.com"/>
+                </div>
+                <div class="row">
+                    <label>授权码</label>
+                    <input id="mailCode" type="password" placeholder="SMTP授权码"/>
+                </div>
+                <div class="row">
+                    <label>发件名(英文)</label>
+                    <input id="mailName" value="chibarin"/>
+                </div>
+                <div class="row">
+                    <button class="small" onclick="mailSave()">💾 保存配置</button>
+                    <button class="small" onclick="mailClearCfg()">清除配置</button>
                 </div>
             </div>
 

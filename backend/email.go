@@ -26,22 +26,9 @@ type EmailResult struct {
 	Msg  string `json:"msg"`
 }
 
-// 配置文件路径: exe同目录/当前目录/用户目录
+// 配置文件路径: 程序当前目录(可写时), 否则用户配置目录(与固定内容同目录)
 func emailConfigPath() string {
-	// 1. exe同目录
-	if exe, err := os.Executable(); err == nil {
-		p := filepath.Join(filepath.Dir(exe), "email_config.json")
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-	}
-	// 2. 当前目录
-	if _, err := os.Stat("email_config.json"); err == nil {
-		return "email_config.json"
-	}
-	// 3. 用户主目录
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "email_config.json")
+	return filepath.Join(appConfigDir(), "email_config.json")
 }
 
 // 保存配置
@@ -132,13 +119,19 @@ func SendEmail(cfg *EmailConfig, to, subject, body string, attachments []string)
 	return &EmailResult{OK: true, Msg: "发送成功"}, nil
 }
 
+// 邮箱预设结果(单对象返回, 避免多返回值JS问题)
+type PresetResult struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+}
+
 // QQ/163预设
-func EmailPreset(provider string) (host, port string) {
+func EmailPreset(provider string) PresetResult {
 	switch provider {
 	case "163":
-		return "smtp.163.com", "465"
+		return PresetResult{Host: "smtp.163.com", Port: "465"}
 	default:
-		return "smtp.qq.com", "465"
+		return PresetResult{Host: "smtp.qq.com", Port: "465"}
 	}
 }
 

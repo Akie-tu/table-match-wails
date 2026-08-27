@@ -15,7 +15,7 @@ type MatchResult struct {
 	OutPath   string   `json:"out_path"`
 }
 
-// FindHeaderRow: 前6行内找含关键词的表头行
+// 查找表头行: 前6行内找含关键词的行
 func findHeaderRow(ws *excelize.File, sheet string, keywords []string) (int, int, error) {
 	rows, err := ws.GetRows(sheet)
 	if err != nil {
@@ -74,7 +74,7 @@ func ListSheets(path string) ([]string, error) {
 	return f.GetSheetList(), nil
 }
 
-// ReadAllRows: 读取指定sheet全部行([][]string)
+// 读取指定工作表全部行数据
 func ReadAllRows(path, sheet string) ([][]string, error) {
 	f, err := excelize.OpenFile(path)
 	if err != nil {
