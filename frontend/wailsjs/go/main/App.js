@@ -6,6 +6,10 @@ export function CleanTaxID(arg1) {
   return window['go']['main']['App']['CleanTaxID'](arg1);
 }
 
+export function DownloadBackgroundImage(arg1) {
+  return window['go']['main']['App']['DownloadBackgroundImage'](arg1);
+}
+
 export function EmailPreset(arg1) {
   return window['go']['main']['App']['EmailPreset'](arg1);
 }

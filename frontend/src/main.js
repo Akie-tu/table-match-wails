@@ -2,7 +2,7 @@
 import './style.css';
 
 // 注入的前端绑定方法(由构建工具自动生成)
-import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate } from '../wailsjs/go/main/App';
+import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate, DownloadBackgroundImage } from '../wailsjs/go/main/App';
 
 const $ = (id) => document.getElementById(id);
 
@@ -578,5 +578,134 @@ async function mailSend() {
 }
 window.mailSend = mailSend;
 
-// 页面加载后: 渲染初始空行 + 加载邮箱配置 + 加载固定内容配置
-document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); invLoadFixed(); });
+// 外观设置模块
+let themeCfg = { background: '#1b2632', card_color: '#243140', text_color: '#e6edf3', accent_color: '#4cc38a', dark_mode: true, blur: 10, opacity: 75 };
+let themeImagePath = ''; // 背景图片本地路径
+
+// 应用CSS变量(含毛玻璃模糊/透明度)
+function themeApplyCSS() {
+    const s = document.documentElement.style;
+    s.setProperty('--bg', themeCfg.background);
+    s.setProperty('--card', themeCfg.card_color);
+    s.setProperty('--text', themeCfg.text_color);
+    s.setProperty('--accent', themeCfg.accent_color);
+    // 毛玻璃: 模糊度 + 卡片透明度(全局卡片/表格)
+    const blur = Math.max(0, Math.min(20, themeCfg.blur || 10));
+    const opacity = Math.max(0.1, Math.min(0.9, (themeCfg.opacity || 75) / 100));
+    s.setProperty('--card-blur', blur + 'px');
+    s.setProperty('--card-alpha', opacity);
+    document.querySelectorAll('.card, nav.tabs .tab, nav.tabs .tab.active, .table-wrap').forEach((el) => {
+        el.style.backdropFilter = blur > 0 ? `blur(${blur}px)` : 'none';
+        el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px)` : 'none';
+    });
+    if (themeImagePath) {
+        // 图片背景(通过API提供, 避免file://被WebView2拦截)
+        document.body.style.background = "url('/api/bg') center/cover no-repeat fixed";
+        document.body.style.backgroundColor = themeCfg.background;
+    } else {
+        document.body.style.background = themeCfg.background;
+    }
+    // 滑块回显
+    $('themeBlur').value = themeCfg.blur || 10;
+    $('themeBlurVal').textContent = (themeCfg.blur || 10) + 'px';
+    $('themeOpacity').value = themeCfg.opacity || 75;
+    $('themeOpacityVal').textContent = (themeCfg.opacity || 75) + '%';
+    $('themeBgColor').value = themeCfg.background;
+}
+
+// 滑块实时预览
+function themePreview() {
+    themeCfg.blur = parseInt($('themeBlur').value) || 10;
+    themeCfg.opacity = parseInt($('themeOpacity').value) || 75;
+    $('themeBlurVal').textContent = themeCfg.blur + 'px';
+    $('themeOpacityVal').textContent = themeCfg.opacity + '%';
+    themeApplyCSS();
+}
+window.themePreview = themePreview;
+
+// 获取图片API背景
+async function themeApplyImage() {
+    const url = $('themeImgApi').value.trim();
+    if (!url) { alert('请输入图片API地址'); return; }
+    $('themeState').textContent = '⏳ 下载图片中…';
+    try {
+        const path = await DownloadBackgroundImage(url);
+        if (!path) { $('themeState').textContent = '❌ 下载失败'; return; }
+        themeImagePath = path;
+        themeApplyCSS();
+        $('themeState').textContent = '✅ 图片背景已应用(保存后生效)';
+    } catch (e) {
+        $('themeState').textContent = '❌ 下载失败: ' + e;
+    }
+}
+window.themeApplyImage = themeApplyImage;
+
+// 清除图片背景
+function themeClearImage() {
+    themeImagePath = '';
+    themeApplyCSS();
+    $('themeState').textContent = '已清除图片背景(需保存生效)';
+}
+window.themeClearImage = themeClearImage;
+
+// 加载外观设置(从API)
+async function themeInit() {
+    try {
+        const r = await fetch('/api/theme');
+        if (r.ok) {
+            const t = await r.json();
+            themeCfg = { background: t.background || '#1b2632', card_color: t.card_color || '#243140',
+                text_color: t.text_color || '#e6edf3', accent_color: t.accent_color || '#4cc38a', dark_mode: !!t.dark_mode,
+                blur: t.blur != null ? t.blur : 10, opacity: t.opacity != null ? t.opacity : 75 };
+            // 恢复图片背景
+            try {
+                const img = await fetch('/api/theme/imagepath');
+                if (img.ok) {
+                    const p = await img.json();
+                    if (p && p.path) themeImagePath = p.path;
+                }
+            } catch (e) { /* 无图片 */ }
+        }
+    } catch (e) { /* 默认 */ }
+    themeApplyCSS();
+}
+window.themeInit = themeInit;
+
+// 自定义背景
+function themeApplyCustom() {
+    themeCfg.background = $('themeBgColor').value;
+    themeApplyCSS();
+    $('themeState').textContent = '预览: 自定义';
+}
+window.themeApplyCustom = themeApplyCustom;
+
+// 保存外观设置(API POST)
+async function themeSave() {
+    try {
+        const r = await fetch('/api/theme', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...themeCfg, image_path: themeImagePath }),
+        });
+        if (r.ok) {
+            $('themeState').textContent = '✅ 已保存到本地目录';
+            alert('✅ 外观设置已保存(下次启动自动恢复)');
+        } else {
+            $('themeState').textContent = '❌ 保存失败';
+        }
+    } catch (e) {
+        $('themeState').textContent = '❌ 保存失败: ' + e;
+    }
+}
+window.themeSave = themeSave;
+
+// 恢复默认
+function themeReset() {
+    themeCfg = { background: '#1b2632', card_color: '#243140', text_color: '#e6edf3', accent_color: '#4cc38a', dark_mode: true, blur: 10, opacity: 75 };
+    themeApplyCSS();
+    $('themeState').textContent = '已恢复默认(需保存生效)';
+}
+window.themeReset = themeReset;
+
+// 页面加载后: 渲染初始空行 + 加载邮箱配置 + 加载固定内容配置 + 加载外观设置
+document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); invLoadFixed(); themeInit(); });

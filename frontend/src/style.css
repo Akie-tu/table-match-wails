@@ -28,23 +28,29 @@ nav.tabs .tab {
     background: transparent; border: 1px solid var(--border); color: var(--muted);
     padding: 8px 18px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 14px;
 }
-nav.tabs .tab.active { background: var(--card); color: var(--text); border-bottom-color: var(--card); }
+nav.tabs .tab.active { background: rgba(36, 49, 64, 0.6); color: var(--text); border-bottom-color: transparent; }
+nav.tabs .tab { background: rgba(36, 49, 64, 0.35); }
 
 .panel { display: none; }
 .panel.active { display: block; }
 
 .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+    background: rgba(36, 49, 64, var(--card-alpha, 0.75));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(var(--card-blur, 10px));
+    -webkit-backdrop-filter: blur(var(--card-blur, 10px));
 }
 .card h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent); }
 
 .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .row label { min-width: 130px; font-size: 13px; color: var(--muted); }
 
-input[type="text"], input:not([type]) {
-    background: #182330; border: 1px solid var(--border); color: var(--text);
-    padding: 7px 10px; border-radius: 6px; flex: 1; min-width: 120px; font-size: 13px;
+input[type="text"], input:not([type]), select, textarea {
+    background: rgba(24, 35, 48, 0.6); border: 1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius: 6px; font-size: 13px;
 }
 input:focus { outline: 1px solid var(--accent); }
 
@@ -75,9 +81,9 @@ p { font-size: 14px; line-height: 1.7; margin-bottom: 8px; }
 .muted { color: var(--muted); }
 
 /* 开票表格 */
-.table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
+.table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; background: rgba(24, 35, 48, 0.4); }
 #invTable { width: 100%; border-collapse: collapse; font-size: 13px; }
-#invTable th { background: #182330; color: var(--accent); padding: 8px 6px; position: sticky; top: 0; text-align: left; white-space: nowrap; }
+#invTable th { background: rgba(24, 35, 48, 0.7); color: var(--accent); padding: 8px 6px; position: sticky; top: 0; text-align: left; white-space: nowrap; }
 #invTable td { padding: 3px 6px; border-top: 1px solid var(--border); }
 #invTable tr.sel { background: #1d3a2c; }
 #invTable .idx { color: var(--muted); text-align: center; width: 42px; }
@@ -91,10 +97,6 @@ p { font-size: 14px; line-height: 1.7; margin-bottom: 8px; }
     padding: 5px 4px; border-radius: 4px; font-size: 13px;
 }
 .btn-row { margin-top: 6px; }
-select {
-    background: #182330; border: 1px solid var(--border); color: var(--text);
-    padding: 7px 10px; border-radius: 6px; font-size: 13px;
-}
 /* 固定内容: 均匀网格布局 */
 .fixed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 16px; }
 .fg { display: flex; flex-direction: column; gap: 4px; }
@@ -102,9 +104,14 @@ select {
 .fg select, .fg input { width: 100%; box-sizing: border-box; }
 .sep { color: var(--border); margin: 0 6px; }
 .cl { min-width: auto !important; font-size: 13px !important; }
-textarea {
-    background: #182330; border: 1px solid var(--border); color: var(--text);
-    padding: 8px 10px; border-radius: 6px; flex: 1; font-size: 13px; font-family: inherit;
-    resize: vertical; min-width: 200px;
-}
-textarea:focus { outline: 1px solid var(--accent); }
+
+/* 滑块 */
+.slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.slider-row label { min-width: 90px; font-size: 13px; color: var(--muted); }
+.slider-row input[type="range"] { flex: 1; }
+.slider-row .val { min-width: 44px; text-align: right; color: var(--text); font-size: 13px; }
+
+/* 外观设置 */
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.preset { width: 44px; height: 32px; border-radius: 6px; border: 2px solid var(--border); cursor: pointer; padding: 0; }
+.preset:hover { border-color: var(--accent); transform: scale(1.08); }

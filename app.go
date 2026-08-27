@@ -134,3 +134,8 @@ func (a *App) CleanTaxID(s string) (string, error) {
 func (a *App) FindInvoiceTemplate() (string, error) {
 	return backend.FindInvoiceTemplate(), nil
 }
+
+// 下载图片API背景(如 https://www.dmoe.cc/random.php), 返回本地路径
+func (a *App) DownloadBackgroundImage(url string) (string, error) {
+	return backend.DownloadBackgroundImage(url)
+}

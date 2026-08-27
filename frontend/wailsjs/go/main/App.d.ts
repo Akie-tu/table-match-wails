@@ -4,6 +4,8 @@ import {backend} from '../models';
 
 export function CleanTaxID(arg1:string):Promise<string>;
 
+export function DownloadBackgroundImage(arg1:string):Promise<string>;
+
 export function EmailPreset(arg1:string):Promise<backend.PresetResult>;
 
 export function FindInvoiceTemplate():Promise<string>;

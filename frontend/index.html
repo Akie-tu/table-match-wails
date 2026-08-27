@@ -9,7 +9,7 @@
 <body>
 <div id="app">
     <header>
-        <h1>🧰 电商工具 <span class="sub">Go + Wails 重构试验版</span></h1>
+        <h1>🧰 电商工具 <span class="sub">Go 正式版</span></h1>
         <span class="by">BY 大萝北拔萝卜</span>
     </header>
 
@@ -20,7 +20,8 @@
             <button class="tab" data-tab="invoice">② 发票处理</button>
             <button class="tab" data-tab="img">③ 图片转JPG</button>
             <button class="tab" data-tab="email">④ 邮箱发送</button>
-            <button class="tab" data-tab="about">⑤ 关于</button>
+            <button class="tab" data-tab="theme">⑤ 外观设置</button>
+            <button class="tab" data-tab="about">⑥ 关于</button>
         </nav>
 
         <!-- 表格核对 -->
@@ -230,17 +231,62 @@
             <div id="mailResult" class="result hidden"></div>
         </section>
 
+        <!-- 外观设置 -->
+        <section id="tab-theme" class="panel">
+            <div class="card">
+                <h3>1. 背景设置</h3>
+                <div class="row">
+                    <label>图片API背景</label>
+                    <input id="themeImgApi" value="https://www.dmoe.cc/random.php" placeholder="图片API地址"/>
+                    <button class="small" onclick="themeApplyImage()">获取图片</button>
+                    <button class="small" onclick="themeClearImage()">清除图片</button>
+                </div>
+                <div class="row">
+                    <label>纯色背景(无图片时)</label>
+                    <input type="color" id="themeBgColor" value="#1b2632" style="width:60px;height:32px;padding:2px"/>
+                    <button class="small" onclick="themeApplyCustom()">应用</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. 毛玻璃效果(图片背景联动)</h3>
+                <div class="slider-row">
+                    <label>模糊度</label>
+                    <input type="range" id="themeBlur" min="0" max="20" value="10" oninput="themePreview()"/>
+                    <span class="val" id="themeBlurVal">10px</span>
+                </div>
+                <div class="slider-row">
+                    <label>卡片透明度</label>
+                    <input type="range" id="themeOpacity" min="10" max="90" value="75" oninput="themePreview()"/>
+                    <span class="val" id="themeOpacityVal">75%</span>
+                </div>
+                <div class="row">
+                    <span class="muted">透明卡片搭配图片背景观感最佳, 实时预览</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>3. 保存</h3>
+                <div class="row">
+                    <button class="primary" onclick="themeSave()">💾 保存外观设置</button>
+                    <button class="small" onclick="themeReset()">恢复默认</button>
+                    <span id="themeState" class="muted"></span>
+                </div>
+            </div>
+        </section>
+
         <!-- 关于 -->
         <section id="tab-about" class="panel">
             <div class="card">
-                <h3>关于本试验版</h3>
-                <p>Go + Wails 重构可行性验证：</p>
+                <h3>关于本工具</h3>
+                <p>电商工具 Go 正式版：</p>
                 <ul>
-                    <li>✅ 后端: Go + Excelize 读写 xlsx(表格核对已跑通)</li>
-                    <li>⏳ 界面: 原生HTML/JS(本页)</li>
-                    <li>📦 目标: 单文件EXE(比Python版小50%) + 零杀软误报</li>
+                    <li>✅ 表格核对 (Excelize 读写)</li>
+                    <li>✅ 发票处理 (行级下拉/导入明细/生成发票文档)</li>
+                    <li>✅ 图片转JPG (批量/目录树/透明白底)</li>
+                    <li>✅ 邮箱发送 (QQ/163/附件)</li>
                 </ul>
-                <p class="muted">核心逻辑实测: 快麦售后明细 216 行全部匹配 ✓</p>
+                <p class="muted">BY 大萝北拔萝卜</p>
             </div>
         </section>
     </main>
