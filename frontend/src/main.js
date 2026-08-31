@@ -70,9 +70,9 @@ async function runMatch() {
         );
         result.classList.remove('hidden');
         result.innerHTML = `
-            <div class="ok">✅ 匹配: <b>${res.matched}</b> | 多规格: <b>${res.multi}</b> | 未匹配: <b>${res.notfound.length}</b></div>
+            <div class="ok">✅ 匹配: <b>${res.matched}</b> | 多规格: <b>${res.multi}</b> | 未匹配: <b>${(res.notfound || []).length}</b></div>
             <div class="muted">输出: ${res.out_path}</div>
-            ${res.notfound.length ? `<div class="warn">未匹配: ${res.notfound.slice(0, 20).join(', ')}${res.notfound.length > 20 ? ' …' : ''}</div>` : ''}`;
+            ${(res.notfound || []).length ? `<div class="warn">未匹配: ${res.notfound.slice(0, 20).join(', ')}${(res.notfound || []).length > 20 ? ' …' : ''}</div>` : ''}`;
     } catch (e) {
         result.innerHTML = `<div class="err">❌ ${e}</div>`;
     }

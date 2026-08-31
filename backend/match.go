@@ -9,10 +9,10 @@ import (
 
 // 表格核对: 用源表某字段去目标表检索, 回填字段
 type MatchResult struct {
-	Matched   int      `json:"matched"`
-	Multi     int      `json:"multi"`
-	NotFound  []string `json:"notfound"`
-	OutPath   string   `json:"out_path"`
+	Matched  int      `json:"matched"`
+	Multi    int      `json:"multi"`
+	NotFound []string `json:"notfound"`
+	OutPath  string   `json:"out_path"`
 }
 
 // 查找表头行: 前6行内找含关键词的行
@@ -169,7 +169,7 @@ func RunMatch(srcPath, tgtPath, srcKey, tgtKey string, fillMap [][2]string,
 		remarkIdx = colIndexByHeader(sRows, shr, remarkCol)
 	}
 
-	res := &MatchResult{}
+	res := &MatchResult{NotFound: []string{}} // 初始化非nil, 防JSON序列化为null
 	// 逐行处理并写回源表
 	for r := shr; r < len(sRows); r++ {
 		row := sRows[r]
@@ -191,6 +191,10 @@ func RunMatch(srcPath, tgtPath, srcKey, tgtKey string, fillMap [][2]string,
 			sci := srcFillCols[fm[0]]
 			tcis := tgtCols[fm[0]]
 			if sci < 0 || len(tcis) == 0 {
+				continue
+			}
+			// 越界保护: 行数据可能比表头短(Excelize行长度不等)
+			if sci >= len(row) {
 				continue
 			}
 			cell := row[sci]

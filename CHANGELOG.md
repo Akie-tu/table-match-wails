@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.2 (2026-08-31)
+### 修复
+- 导入明细文档格式探测: 不再依赖文件扩展名——先读文件头魔数判断真实格式(PK=xlsx/Excel, 其他=CSV), 修复 .csv 扩展名实际是 Excel 文件时报 "record on line 2: wrong number of fields"
+- 表格核对卡"核对中"无结果: 回填时行数据越界保护(源表行比表头短时跳过), 修复 index out of range panic
+- 表格核对全部匹配时前端 TypeError: MatchResult.NotFound 初始化非nil切片 + 前端 (res.notfound || []) 容错
+
 ## v1.0.1 (2026-08-27)
 ### 新增
 - 外观设置模块(正式版首个版本)

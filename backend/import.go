@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -29,38 +28,47 @@ var importRules = map[string][]string{
 }
 
 // 读取表格/文本文件为二维数据(首行是表头)
+// 先探测真实格式(文件头): ZIP(PK)=xlsx, 否则按CSV解析 —— 防 .csv 扩展名实际是 Excel 文件
 func ReadDetailFile(path string) ([][]string, error) {
-	ext := strings.ToLower(filepath.Ext(path))
-	if ext == ".csv" {
-		f, err := os.Open(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	head := make([]byte, 4)
+	if _, err := f.Read(head); err != nil {
+		return nil, err
+	}
+	// 回退到文件开头
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, err
+	}
+	isXlsx := len(head) >= 4 && head[0] == 'P' && head[1] == 'K' // xlsx/zip 魔数 PK\x03\x04
+	if isXlsx {
+		xlsx, err := excelize.OpenFile(path)
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
-		r := csv.NewReader(f)
-		r.LazyQuotes = true
-		var rows [][]string
-		for {
-			rec, err := r.Read()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return nil, err
-			}
-			rows = append(rows, rec)
+		defer xlsx.Close()
+		sheet := xlsx.GetSheetList()[0]
+		rows, err := xlsx.GetRows(sheet)
+		if err != nil {
+			return nil, err
 		}
 		return rows, nil
 	}
-	xlsx, err := excelize.OpenFile(path)
-	if err != nil {
-		return nil, err
-	}
-	defer xlsx.Close()
-	sheet := xlsx.GetSheetList()[0]
-	rows, err := xlsx.GetRows(sheet)
-	if err != nil {
-		return nil, err
+	r := csv.NewReader(f)
+	r.LazyQuotes = true
+	var rows [][]string
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, rec)
 	}
 	return rows, nil
 }
