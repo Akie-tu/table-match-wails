@@ -194,8 +194,9 @@ func RunMatch(srcPath, tgtPath, srcKey, tgtKey string, fillMap [][2]string,
 				continue
 			}
 			// 越界保护: 行数据可能比表头短(Excelize行长度不等)
-			if sci >= len(row) {
-				continue
+			// 短行补全到表头宽度, 否则回填列永远越界跳过
+			for len(row) <= sci {
+				row = append(row, "")
 			}
 			cell := row[sci]
 			if skipExisting && strings.TrimSpace(cell) != "" {

@@ -95,6 +95,15 @@ func MatchDetailColumns(headers []string) map[string]int {
 			continue
 		}
 		found := -1
+		// remark 特殊: 优先订单编号列(生成发票备注=订单编号), 无订单编号才用备注列
+		if field == "remark" {
+			found = findCol(headers, []string{"订单编号", "订单号", "平台订单号", "平台订单编号", "系统订单号"})
+			if found < 0 {
+				found = findCol(headers, []string{"备注", "发票备注"})
+			}
+			colMap[field] = found
+			continue
+		}
 		for i, h := range headers {
 			if i == typeFound {
 				continue
@@ -116,6 +125,19 @@ func MatchDetailColumns(headers []string) map[string]int {
 		colMap[field] = found
 	}
 	return colMap
+}
+
+// findCol: 按关键词列表找列, 返回第一个匹配列(找不到返回 -1)
+func findCol(headers []string, kws []string) int {
+	for i, h := range headers {
+		hl := strings.ToLower(h)
+		for _, k := range kws {
+			if strings.Contains(hl, strings.ToLower(k)) {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 // 发票类型映射: 电子普通→普通发票, 电子专用/专用→增值税专用发票
