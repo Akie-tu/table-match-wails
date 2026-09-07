@@ -2,7 +2,7 @@
 import './style.css';
 
 // 注入的前端绑定方法(由构建工具自动生成)
-import { RunMatch, SelectFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate, DownloadBackgroundImage } from '../wailsjs/go/main/App';
+import { RunMatch, SelectFile, SelectAttachFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate, DownloadBackgroundImage } from '../wailsjs/go/main/App';
 
 const $ = (id) => document.getElementById(id);
 
@@ -544,7 +544,7 @@ function mailClearCfg() {
 window.mailClearCfg = mailClearCfg;
 
 async function mailPickAttach() {
-    const path = await SelectFile();
+    const path = await SelectAttachFile(); // 所有文件类型(需求R1)
     if (path) {
         mailAttachments.push(path);
         $('mailAttach').value = mailAttachments.map((p) => p.split(/[\\/]/).pop()).join('; ');

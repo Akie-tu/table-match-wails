@@ -3,8 +3,9 @@ package backend
 import (
 	"fmt"
 	"image"
+	"image/draw"
 	"image/jpeg"
-	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,62 +43,36 @@ func decodeImage(path string) (image.Image, error) {
 	return img, err
 }
 
-// 单张转JPG(白底合成RGBA)
+// 单张转JPG(任意格式 → 白底合成, 修复: 原RGBA断言对NRGBA/NYCbCrA失效致透明变黑底)
 func convertOne(src, dst string, quality int) error {
 	img, err := decodeImage(src)
 	if err != nil {
 		return err
 	}
-	// RGBA/透明 → 白底
+	// 统一画到白底: draw.Draw 对 RGBA/NRGBA/NYCbCrA 等所有实现通用,
+	// 不透明像素原样覆盖白底, 半透明像素与白底正确混合, JPEG 忽略 alpha 也无黑底
 	b := img.Bounds()
-	if rgba, ok := img.(*image.RGBA); ok && hasAlpha(rgba) {
-		bg := image.NewRGBA(b)
-		for y := b.Min.Y; y < b.Max.Y; y++ {
-			for x := b.Min.X; x < b.Max.X; x++ {
-				bg.Set(x, y, image.White)
-			}
-		}
-		// 合成
-		drawOver(bg, rgba)
-		img = bg
-	}
-	out, err := os.Create(dst)
+	bg := image.NewRGBA(b)
+	draw.Draw(bg, b, image.White, image.Point{}, draw.Src)
+	draw.Draw(bg, b, img, b.Min, draw.Over)
+	img = bg
+
+	// 原子写: 先写临时文件再改名, 防转换中断留下半个jpg
+	out, err := os.Create(dst + ".tmp")
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	return jpeg.Encode(out, img, &jpeg.Options{Quality: quality})
-}
-
-// 是否有透明像素
-func hasAlpha(rgba *image.RGBA) bool {
-	for i := 3; i < len(rgba.Pix); i += 4 {
-		if rgba.Pix[i] != 255 {
-			return true
-		}
+	encErr := jpeg.Encode(out, img, &jpeg.Options{Quality: quality})
+	closeErr := out.Close()
+	if encErr != nil {
+		os.Remove(dst + ".tmp")
+		return encErr
 	}
-	return false
-}
-
-// 简单合成(半透明像素与白底混合)
-func drawOver(dst *image.RGBA, src *image.RGBA) {
-	b := src.Bounds()
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			s := src.RGBAAt(x, y)
-			if s.A == 255 {
-				dst.SetRGBA(x, y, s)
-			} else if s.A > 0 {
-				// 半透明混合
-				dr := dst.RGBAAt(x, y)
-				a := float64(s.A) / 255.0
-				dr.R = uint8(float64(s.R)*a + float64(dr.R)*(1-a))
-				dr.G = uint8(float64(s.G)*a + float64(dr.G)*(1-a))
-				dr.B = uint8(float64(s.B)*a + float64(dr.B)*(1-a))
-				dst.SetRGBA(x, y, dr)
-			}
-		}
+	if closeErr != nil {
+		os.Remove(dst + ".tmp")
+		return closeErr
 	}
+	return os.Rename(dst+".tmp", dst)
 }
 
 // 批量转JPG: 保留目录树
@@ -106,20 +81,32 @@ func RunImgConvert(srcRoot, outRoot string, quality int) (*ImgConvertResult, err
 		quality = 92
 	}
 	res := &ImgConvertResult{}
-	absOut, _ := filepath.Abs(outRoot)
-	err := filepath.Walk(srcRoot, func(path string, info os.FileInfo, err error) error {
+	absOut, err := filepath.Abs(outRoot)
+	if err != nil {
+		return nil, err
+	}
+	absSrc, err := filepath.Abs(srcRoot)
+	if err != nil {
+		return nil, err
+	}
+	err = filepath.Walk(absSrc, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
+		// 跳过输出目录(修复: 原逻辑目录项直接return nil, 跳过检查永远不生效 → out/out/out嵌套)
 		if info.IsDir() {
+			abs, _ := filepath.Abs(path)
+			if abs == absOut {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		res.Total++
-		rel, _ := filepath.Rel(srcRoot, path)
+		rel, _ := filepath.Rel(absSrc, path)
 		ext := strings.ToLower(filepath.Ext(path))
 		if imgExts[ext] {
 			base := strings.TrimSuffix(path, filepath.Ext(path))
-			dst := filepath.Join(outRoot, filepath.Dir(rel), filepath.Base(base)+".jpg")
+			dst := filepath.Join(absOut, filepath.Dir(rel), filepath.Base(base)+".jpg")
 			os.MkdirAll(filepath.Dir(dst), 0o755)
 			if err := convertOne(path, dst, quality); err != nil {
 				res.Failed++
@@ -128,32 +115,42 @@ func RunImgConvert(srcRoot, outRoot string, quality int) (*ImgConvertResult, err
 				res.Converted++
 			}
 		} else {
-			// 非图片: 复制
-			dst := filepath.Join(outRoot, rel)
+			// 非图片: 流式复制(修复: 原ReadFile整读大文件会OOM)
+			dst := filepath.Join(absOut, rel)
 			os.MkdirAll(filepath.Dir(dst), 0o755)
 			if err := copyFile(path, dst); err != nil {
 				res.Failed++
+				res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", rel, err))
 			} else {
 				res.Copied++
 			}
-		}
-		// 跳过输出目录
-		abs, _ := filepath.Abs(path)
-		if strings.HasPrefix(abs, absOut) && path != srcRoot {
-			return filepath.SkipDir
 		}
 		return nil
 	})
 	return res, err
 }
 
+// copyFile: io.Copy流式复制, 支持任意大小文件
 func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
+	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, data, 0o644)
+	defer in.Close()
+	tmp := dst + ".tmp"
+	out, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(out, in)
+	closeErr := out.Close()
+	if err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	if closeErr != nil {
+		os.Remove(tmp)
+		return closeErr
+	}
+	return os.Rename(tmp, dst)
 }
-
-// png编码(备用, 未用)
-var _ = png.Encode

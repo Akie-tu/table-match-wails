@@ -34,6 +34,8 @@ export function SaveFixedConfig(arg1:backend.FixedContent):Promise<void>;
 
 export function SelectDir():Promise<string>;
 
+export function SelectAttachFile():Promise<string>;
+
 export function SelectFile():Promise<string>;
 
 export function SelectSavePath(arg1:string):Promise<string>;

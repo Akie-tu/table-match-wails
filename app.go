@@ -41,6 +41,20 @@ func (a *App) SelectFile() (string, error) {
 	return runtime.OpenFileDialog(a.ctx, opts)
 }
 
+// SelectAttachFile: 邮件附件选择对话框 —— 默认所有文件类型(需求R1)
+func (a *App) SelectAttachFile() (string, error) {
+	opts := runtime.OpenDialogOptions{
+		Title: "选择附件(所有文件类型)",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "所有文件", Pattern: "*.*"},
+			{DisplayName: "图片", Pattern: "*.jpg;*.jpeg;*.png;*.gif;*.webp;*.bmp"},
+			{DisplayName: "压缩包", Pattern: "*.zip;*.7z;*.rar;*.tar;*.gz"},
+			{DisplayName: "文档", Pattern: "*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.csv;*.txt"},
+		},
+	}
+	return runtime.OpenFileDialog(a.ctx, opts)
+}
+
 // 表格核对: 前端调用入口
 // fillMap: [["源列","目标列"], ...]
 func (a *App) RunMatch(srcPath, tgtPath, srcKey, tgtKey string,

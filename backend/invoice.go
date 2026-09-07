@@ -92,6 +92,10 @@ func validateInvoice(inv *Invoice, fixed FixedContent, idx int) []string {
 	if strings.TrimSpace(inv.Amount) == "" {
 		errs = append(errs, fmt.Sprintf("第%d行: 金额为空", idx))
 	}
+	// 非自然人必须有税号(修复自然人反逻辑的配套校验)
+	if strings.TrimSpace(inv.IsNatural) != "是" && strings.TrimSpace(inv.TaxID) == "" {
+		errs = append(errs, fmt.Sprintf("第%d行: 非自然人但纳税人识别号为空", idx))
+	}
 	// 灵活版校验(项目/编码/单位/税率)
 	item := firstNonEmpty(inv.ItemName, fixed.ItemName)
 	code := firstNonEmpty(inv.TaxCode, fixed.TaxCode)
@@ -173,9 +177,11 @@ func GenerateInvoiceXlsx(invoices []*Invoice, fixed FixedContent, templatePath, 
 
 		isNatural := strings.TrimSpace(inv.IsNatural)
 		taxID := strings.TrimSpace(inv.TaxID)
-		naturalFlag := "是"
-		if isNatural != "是" && taxID != "" {
-			naturalFlag = "否"
+		// 修复: 原逻辑默认"是"且靠税号反推, 用户选"否"但没填税号会被静默改成自然人
+		// 现在: 默认"否", 仅当行级明确选择"是/个人/自然人"才写"是"
+		naturalFlag := "否"
+		if isNatural == "是" {
+			naturalFlag = "是"
 		}
 
 		// 基本信息表

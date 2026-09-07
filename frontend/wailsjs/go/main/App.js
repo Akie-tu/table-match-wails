@@ -66,6 +66,10 @@ export function SelectDir() {
   return window['go']['main']['App']['SelectDir']();
 }
 
+export function SelectAttachFile() {
+  return window['go']['main']['App']['SelectAttachFile']();
+}
+
 export function SelectFile() {
   return window['go']['main']['App']['SelectFile']();
 }
