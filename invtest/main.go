@@ -34,7 +34,13 @@ func main() {
 		},
 	}
 
-	path, errs, err := backend.GenerateInvoiceXlsx(invoices, fixed, tpl, out)
+	path, errs, warns, err := backend.GenerateInvoiceXlsx(invoices, fixed, tpl, out, false)
+	if len(warns) > 0 {
+		fmt.Println("⚠️ 提醒:")
+		for _, w := range warns {
+			fmt.Println("  ", w)
+		}
+	}
 	if err != nil {
 		fmt.Println("❌ 错误:", err)
 		return

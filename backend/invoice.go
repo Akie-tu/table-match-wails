@@ -25,8 +25,9 @@ type Invoice struct {
 
 // 生成结果(供前端单对象返回)
 type InvoiceResult struct {
-	Path   string   `json:"path"`
-	Errors []string `json:"errors"`
+	Path     string   `json:"path"`
+	Errors   []string `json:"errors"`
+	Warnings []string `json:"warnings"` // 提醒但不拦截(如税号为空)
 }
 
 // 基本信息表列号
@@ -83,18 +84,104 @@ func normalizeAmount(v string) string {
 	return v // 前端已格式化, 这里简单透传(可加小数处理)
 }
 
+// MergeInvoices: 按(税号+抬头+发票类型+含税+自然人+项目名称+单位+税率+备注)合并数量金额
+// 仅在勾选"合并开票"时调用; 返回合并后的发票列表和合并说明
+func MergeInvoices(invoices []*Invoice) ([]*Invoice, []string) {
+	if len(invoices) <= 1 {
+		return invoices, nil
+	}
+	type key struct {
+		taxID, buyer, invType, taxInc, natural, item, unit, rate, remark string
+	}
+	idx := map[key]int{} // key -> merged序号
+	merged := []*Invoice{}
+	var notes []string
+
+	for _, inv := range invoices {
+		k := key{
+			taxID:   strings.TrimSpace(inv.TaxID),
+			buyer:   strings.TrimSpace(inv.Buyer),
+			invType: inv.InvoiceType,
+			taxInc:  inv.TaxIncluded,
+			natural: inv.IsNatural,
+			item:    inv.ItemName,
+			unit:    inv.Unit,
+			rate:    inv.TaxRate,
+			remark:  strings.TrimSpace(inv.Remark),
+		}
+		if ki, ok := idx[k]; ok {
+			tgt := merged[ki]
+			tgt.Qty = addQty(tgt.Qty, inv.Qty)
+			tgt.Amount = addAmount(tgt.Amount, inv.Amount)
+			notes = append(notes, fmt.Sprintf("已合并: %s(税号%s)的数量金额并入同行", inv.Buyer, k.taxID))
+		} else {
+			idx[k] = len(merged)
+			cp := *inv
+			merged = append(merged, &cp)
+		}
+	}
+	return merged, notes
+}
+
+// 数量相加(支持小数; 无法解析则取非空者)
+func addQty(a, b string) string {
+	fa, fb := toFloat(a), toFloat(b)
+	switch {
+	case fa == nil && fb == nil:
+		return b
+	case fa == nil:
+		return b
+	case fb == nil:
+		return a
+	}
+	return trimFloat(*fa + *fb)
+}
+
+// 金额相加(保留2位小数)
+func addAmount(a, b string) string {
+	fa, fb := toFloat(a), toFloat(b)
+	switch {
+	case fa == nil && fb == nil:
+		return b
+	case fa == nil:
+		return b
+	case fb == nil:
+		return a
+	}
+	return fmt.Sprintf("%.2f", *fa+*fb)
+}
+
+func toFloat(s string) *float64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	s = strings.ReplaceAll(s, ",", "")
+	var f float64
+	if _, err := fmt.Sscanf(s, "%f", &f); err != nil {
+		return nil
+	}
+	return &f
+}
+
+func trimFloat(f float64) string {
+	if f == float64(int64(f)) {
+		return fmt.Sprintf("%d", int64(f))
+	}
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.4f", f), "0"), ".")
+}
+
 // 校验单条发票
-func validateInvoice(inv *Invoice, fixed FixedContent, idx int) []string {
-	var errs []string
+func validateInvoice(inv *Invoice, fixed FixedContent, idx int) (errs []string, warns []string) {
 	if strings.TrimSpace(inv.Buyer) == "" {
 		errs = append(errs, fmt.Sprintf("第%d行: 购买方名称为空", idx))
 	}
 	if strings.TrimSpace(inv.Amount) == "" {
 		errs = append(errs, fmt.Sprintf("第%d行: 金额为空", idx))
 	}
-	// 非自然人必须有税号(修复自然人反逻辑的配套校验)
+	// 非自然人税号为空: 仅提醒不拦截(部分发票确实无税号, 可正常开具)
 	if strings.TrimSpace(inv.IsNatural) != "是" && strings.TrimSpace(inv.TaxID) == "" {
-		errs = append(errs, fmt.Sprintf("第%d行: 非自然人但纳税人识别号为空", idx))
+		warns = append(warns, fmt.Sprintf("第%d行: 未提供纳税人识别号(可正常开具, 如需可补填后重新生成)", idx))
 	}
 	// 灵活版校验(项目/编码/单位/税率)
 	item := firstNonEmpty(inv.ItemName, fixed.ItemName)
@@ -113,7 +200,7 @@ func validateInvoice(inv *Invoice, fixed FixedContent, idx int) []string {
 	if rate == "" {
 		errs = append(errs, fmt.Sprintf("第%d行: 税率为空", idx))
 	}
-	return errs
+	return errs, warns
 }
 
 func firstNonEmpty(vals ...string) string {
@@ -127,31 +214,38 @@ func firstNonEmpty(vals ...string) string {
 
 // 生成开票导入文件: 填数据到官方模板并另存
 // 参数: 官方模板路径; 返回(输出路径, 错误列表)
-func GenerateInvoiceXlsx(invoices []*Invoice, fixed FixedContent, templatePath, outPath string) (string, []string, error) {
+func GenerateInvoiceXlsx(invoices []*Invoice, fixed FixedContent, templatePath, outPath string, mergeAll bool) (string, []string, []string, error) {
 	if len(invoices) == 0 {
-		return "", nil, fmt.Errorf("发票列表为空")
+		return "", nil, nil, fmt.Errorf("发票列表为空")
+	}
+	var mergeNotes []string
+	if mergeAll {
+		invoices, mergeNotes = MergeInvoices(invoices)
 	}
 	if templatePath == "" {
-		return "", nil, fmt.Errorf("找不到开票模板文件, 请选择模板")
+		return "", nil, nil, fmt.Errorf("找不到开票模板文件, 请选择模板")
 	}
 	f, err := excelize.OpenFile(templatePath)
 	if err != nil {
-		return "", nil, fmt.Errorf("打开模板失败: %v", err)
+		return "", nil, nil, fmt.Errorf("打开模板失败: %v", err)
 	}
 	defer f.Close()
 
 	if !hasSheet(f, "1-发票基本信息") || !hasSheet(f, "2-发票明细信息") {
-		return "", nil, fmt.Errorf("模板缺少必需工作表")
+		return "", nil, nil, fmt.Errorf("模板缺少必需工作表")
 	}
 
-	// 校验
-	var allErrs []string
+	// 校验(errs拦截 / warns仅提醒不拦截)
+	var allErrs, allWarns []string
 	for i, inv := range invoices {
-		allErrs = append(allErrs, validateInvoice(inv, fixed, i+1)...)
+		e, w := validateInvoice(inv, fixed, i+1)
+		allErrs = append(allErrs, e...)
+		allWarns = append(allWarns, w...)
 	}
 	if len(allErrs) > 0 {
-		return "", allErrs, nil
+		return "", allErrs, nil, nil
 	}
+	allWarns = append(mergeNotes, allWarns...)
 
 	// 清空模板已有数据(第4行起)
 	for _, sheet := range []string{"1-发票基本信息", "2-发票明细信息"} {
@@ -213,9 +307,9 @@ func GenerateInvoiceXlsx(invoices []*Invoice, fixed FixedContent, templatePath, 
 		outPath = "开票导入.xlsx"
 	}
 	if err := f.SaveAs(outPath); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
-	return outPath, nil, nil
+	return outPath, nil, allWarns, nil
 }
 
 func hasSheet(f *excelize.File, name string) bool {

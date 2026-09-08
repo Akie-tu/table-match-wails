@@ -10,7 +10,7 @@ export function EmailPreset(arg1:string):Promise<backend.PresetResult>;
 
 export function FindInvoiceTemplate():Promise<string>;
 
-export function GenerateInvoice(arg1:Array<backend.Invoice>,arg2:backend.FixedContent,arg3:string,arg4:string):Promise<backend.InvoiceResult>;
+export function GenerateInvoice(arg1:Array<backend.Invoice>,arg2:backend.FixedContent,arg3:string,arg4:string,arg5:boolean):Promise<backend.InvoiceResult>;
 
 export function Greet(arg1:string):Promise<string>;
 

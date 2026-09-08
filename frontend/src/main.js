@@ -413,12 +413,16 @@ async function invGenerate() {
     res.classList.remove('hidden');
     res.innerHTML = '⏳ 生成中…';
     try {
-        const r = await GenerateInvoice(invRows, fixed, $('invTpl').value.trim(), out);
+        const r = await GenerateInvoice(invRows, fixed, $('invTpl').value.trim(), out, $('invMerge').checked);
         if (r.errors && r.errors.length) {
             res.innerHTML = `<div class="err">❌ 校验失败:<br/>${r.errors.join('<br/>')}</div>`;
             return;
         }
-        res.innerHTML = `<div class="ok">✅ 生成成功: ${r.path}</div>`;
+        let warnHtml = '';
+        if (r.warnings && r.warnings.length) {
+            warnHtml = `<div class="warn">⚠️ 提醒:<br/>${r.warnings.join('<br/>')}</div>`;
+        }
+        res.innerHTML = `<div class="ok">✅ 生成成功: ${r.path}</div>` + warnHtml;
     } catch (e) {
         res.innerHTML = `<div class="err">❌ ${e}</div>`;
     }
