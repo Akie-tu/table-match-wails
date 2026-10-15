@@ -31,19 +31,20 @@ jobs:
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
-      # ★ 先生成绑定再构建前端：前端 import 的 wailsjs 绑定必须存在，
-      #   否则 vite 会报 "xxx is not exported by wailsjs/go/main/App.js"
-      - name: Generate bindings
-        shell: bash
-        run: |
-          wails generate module
-
+      # ⚠️ 顺序不能反：
+      #   ① 前端 import 的 wailsjs 绑定必须已存在(仓库里提交着，新增绑定要一起提交)
+      #   ② wails generate module 需要 frontend/dist 已存在(main.go embed all:frontend/dist)
       - name: Build frontend
         shell: bash
         working-directory: frontend
         run: |
           npm install
           npm run build
+
+      - name: Generate bindings
+        shell: bash
+        run: |
+          wails generate module
 
       - name: Build Windows EXE
         shell: bash
