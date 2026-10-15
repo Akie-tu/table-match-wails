@@ -1,5 +1,5 @@
 {
-  "version": "v1.0.8",
-  "notes": "### 变更\n- **更新默认加速源切到温哥华自建节点**（`http://104.129.183.180:8088/<密径>/`）\n  - 实测：温哥华 **599 KB/s** vs 香港 32 KB/s ⇒ **快约 18 倍** ✅\n  - 加速站带密径保护：只放行密径开头的请求（无密径直接 404），防白嫖带宽\n  - **三级回落**：主用自建源 → 香港自建源 → GitHub 直连 → 公共镜像（ghfast / gh-proxy）\n  - 界面「加速节点」或 exe 同目录 `update_config.json` 仍可随时改/清空",
-  "url": "https://github.com/Akie-tu/table-match-wails/releases/download/v1.0.8/table-match-wails.exe"
+  "version": "v1.0.9",
+  "notes": "### 修复\n- **合并开票失效**：合并键里原来带了**备注**，而备注=订单编号（行行不同）⇒ 同抬头同税号的多单永远合不上\n  - 现在**备注不参与合并判定**（用户明确\"可以舍弃订单编号\"），同税号+同抬头+同项目/单位/税率即可合并\n  - 合并后备注**自动拼接**各单号（`；` 分隔、自动去重），超 180 字收敛为「首单 等N单」避免被开票系统截断\n  - 前端勾选框文案补全规则说明\n### 测试\n- 新增 `backend/invoice_merge_test.go`：合并键忽略备注 / 备注拼接去重与超长收敛 / **真生成 xlsx 读回校验**（行数·数量·金额·备注）",
+  "url": "https://github.com/Akie-tu/table-match-wails/releases/download/v1.0.9/table-match-wails.exe"
 }
