@@ -78,21 +78,29 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           python -c "import json,os;t=os.environ['TAG'];r=os.environ['REPO'];json.dump({'version':t,'notes':os.environ.get('NOTES','').strip(),'url':'https://github.com/'+r+'/releases/download/'+t+'/table-match-wails.exe'},open('latest.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)"
+          cp latest.json "$RUNNER_TEMP/latest.json"
           cat latest.json
 
       # ★ 把 latest.json 提交回仓库(main)：raw 路径免 API 检查更新
       #   (自建加速站只放行 download/raw，/releases/latest/... 会被 502)
+      # ⚠️ 不能直接 git push HEAD:main —— 检出的是 tag(游离头)，main 可能已前进 ⇒ 非快进被拒
+      #    改为：以 origin/main 为基重建分支，再覆盖 latest.json 提交
+      #    continue-on-error：这步只是"便利清单"，✗ 不能因为它失败就让整个发版失败
       - name: Publish latest.json to repo
+        continue-on-error: true
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B publishmain origin/main
+          cp "$RUNNER_TEMP/latest.json" latest.json
           git add -f latest.json
           if git diff --cached --quiet; then
             echo "latest.json 无变化"
           else
             git commit -m "chore: latest.json for ${{ github.ref_name }} [skip ci]"
-            git push origin HEAD:main
+            git push origin publishmain:main
           fi
 
       - name: Upload to Release
