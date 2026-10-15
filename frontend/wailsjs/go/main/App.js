@@ -81,3 +81,23 @@ export function SelectSavePath(arg1) {
 export function SendEmail(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['SendEmail'](arg1, arg2, arg3, arg4, arg5);
 }
+
+export function CheckUpdate() {
+  return window['go']['main']['App']['CheckUpdate']();
+}
+
+export function GetUpdateConfig() {
+  return window['go']['main']['App']['GetUpdateConfig']();
+}
+
+export function SaveUpdateConfig(arg1) {
+  return window['go']['main']['App']['SaveUpdateConfig'](arg1);
+}
+
+export function StartUpdate(arg1) {
+  return window['go']['main']['App']['StartUpdate'](arg1);
+}
+
+export function Version() {
+  return window['go']['main']['App']['Version']();
+}

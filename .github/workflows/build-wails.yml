@@ -31,17 +31,19 @@ jobs:
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
+      # ★ 先生成绑定再构建前端：前端 import 的 wailsjs 绑定必须存在，
+      #   否则 vite 会报 "xxx is not exported by wailsjs/go/main/App.js"
+      - name: Generate bindings
+        shell: bash
+        run: |
+          wails generate module
+
       - name: Build frontend
         shell: bash
         working-directory: frontend
         run: |
           npm install
           npm run build
-
-      - name: Generate bindings
-        shell: bash
-        run: |
-          wails generate module
 
       - name: Build Windows EXE
         shell: bash
@@ -65,6 +67,29 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # ★ 版本清单：客户端免 API 检查更新用
+      #   地址(永远指向最新 release): https://github.com/<repo>/releases/latest/download/latest.json
+      - name: Write latest.json
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+          NOTES: ${{ steps.changelog.outputs.body }}
+          REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json, os
+          tag = os.environ["TAG"]
+          repo = os.environ["REPO"]
+          data = {
+              "version": tag,
+              "notes": os.environ.get("NOTES", "").strip(),
+              "url": f"https://github.com/{repo}/releases/download/{tag}/table-match-wails.exe",
+          }
+          with open("latest.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          print(open("latest.json", encoding="utf-8").read())
+          PY
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
@@ -72,4 +97,5 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           files: |
             build/bin/table-match-wails.exe
+            latest.json
           fail_on_unmatched_files: false

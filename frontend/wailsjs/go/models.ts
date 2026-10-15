@@ -193,6 +193,64 @@ export namespace backend {
 	        this.port = source["port"];
 	    }
 	}
+	export class UpdateConfig {
+	    mirror: string;
+	    repo: string;
+	    asset: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mirror = source["mirror"];
+	        this.repo = source["repo"];
+	        this.asset = source["asset"];
+	    }
+	}
+	export class UpdateInfo {
+	    current: string;
+	    latest: string;
+	    has_update: boolean;
+	    notes: string;
+	    url: string;
+	    mirror: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current = source["current"];
+	        this.latest = source["latest"];
+	        this.has_update = source["has_update"];
+	        this.notes = source["notes"];
+	        this.url = source["url"];
+	        this.mirror = source["mirror"];
+	        this.error = source["error"];
+	    }
+	}
+	export class UpdateResult {
+	    ok: boolean;
+	    size: number;
+	    path: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.size = source["size"];
+	        this.path = source["path"];
+	        this.error = source["error"];
+	    }
+	}
 
 }
 

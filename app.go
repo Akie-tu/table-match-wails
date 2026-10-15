@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"tablematch/backend"
@@ -27,6 +28,43 @@ func (a *App) startup(ctx context.Context) {
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// ── 版本 / 更新（★ 走 GitHub 加速节点，前缀可配）────────────────
+
+// Version 当前版本（前端"关于"页显示）
+func (a *App) Version() string { return backend.Version }
+
+// CheckUpdate 检查更新（返回单对象，避免多返回值 JS 解构问题）
+func (a *App) CheckUpdate() *backend.UpdateInfo {
+	return backend.CheckUpdate()
+}
+
+// GetUpdateConfig 读更新源配置（加速前缀可改）
+func (a *App) GetUpdateConfig() backend.UpdateConfig {
+	return backend.LoadUpdateConfig()
+}
+
+// SaveUpdateConfig 保存更新源配置
+func (a *App) SaveUpdateConfig(c backend.UpdateConfig) error {
+	return backend.SaveUpdateConfig(c)
+}
+
+// StartUpdate 下载新版本并启动替换（进度经 update:progress 事件推给前端）
+// 成功后自动退出本进程：更新器等进程结束 → 替换 exe → 重启
+func (a *App) StartUpdate(url string) *backend.UpdateResult {
+	res := backend.DownloadAndUpdate(url, func(got, total int64, stage string) {
+		runtime.EventsEmit(a.ctx, "update:progress", map[string]any{
+			"got": got, "total": total, "stage": stage,
+		})
+	})
+	if res.OK {
+		go func() {
+			time.Sleep(800 * time.Millisecond)
+			runtime.Quit(a.ctx)
+		}()
+	}
+	return res
 }
 
 // SelectFile: 原生文件选择对话框(前端调用)

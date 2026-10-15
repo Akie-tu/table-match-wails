@@ -41,3 +41,13 @@ export function SelectFile():Promise<string>;
 export function SelectSavePath(arg1:string):Promise<string>;
 
 export function SendEmail(arg1:backend.EmailConfig,arg2:string,arg3:string,arg4:string,arg5:Array<string>):Promise<backend.EmailResult>;
+
+export function CheckUpdate():Promise<backend.UpdateInfo>;
+
+export function GetUpdateConfig():Promise<backend.UpdateConfig>;
+
+export function SaveUpdateConfig(arg1:backend.UpdateConfig):Promise<void>;
+
+export function StartUpdate(arg1:string):Promise<backend.UpdateResult>;
+
+export function Version():Promise<string>;

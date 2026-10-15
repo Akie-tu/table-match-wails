@@ -2,7 +2,8 @@
 import './style.css';
 
 // 注入的前端绑定方法(由构建工具自动生成)
-import { RunMatch, SelectFile, SelectAttachFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate, DownloadBackgroundImage } from '../wailsjs/go/main/App';
+import { RunMatch, SelectFile, SelectAttachFile, GenerateInvoice, SelectSavePath, ImportInvoiceDetail, SelectDir, RunImgConvert, SaveEmailConfig, LoadEmailConfig, SendEmail, EmailPreset, SaveFixedConfig, LoadFixedConfig, CleanTaxID, FindInvoiceTemplate, DownloadBackgroundImage, Version, CheckUpdate, GetUpdateConfig, SaveUpdateConfig, StartUpdate } from '../wailsjs/go/main/App';
+import { EventsOn } from '../wailsjs/runtime/runtime';
 
 const $ = (id) => document.getElementById(id);
 
@@ -712,4 +713,86 @@ function themeReset() {
 window.themeReset = themeReset;
 
 // 页面加载后: 渲染初始空行 + 加载邮箱配置 + 加载固定内容配置 + 加载外观设置
-document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); invLoadFixed(); themeInit(); });
+// ══════════════════════════════════════════════════════════════
+//  版本与更新（★ 走 GitHub 加速节点，前缀可配、不写死）
+// ══════════════════════════════════════════════════════════════
+let upInfo = null;
+
+async function updateInit() {
+    try { $('verNow').textContent = await Version(); } catch (e) { $('verNow').textContent = '?'; }
+    try {
+        const c = await GetUpdateConfig();
+        $('upMirror').value = c.mirror || '';
+    } catch (e) { /* 读不到就用默认（自建加速站） */ }
+    // 下载进度：后端 StartUpdate 里 EventsEmit 推过来
+    EventsOn('update:progress', (p) => {
+        const wrap = $('upBarWrap'), bar = $('upBar'), st = $('upState');
+        if (!wrap || !bar || !st) return;
+        wrap.style.display = 'block';
+        if (p && p.total > 0) {
+            const pct = Math.min(100, Math.round(p.got * 100 / p.total));
+            bar.style.width = pct + '%';
+            st.textContent = `${p.stage} ${pct}%（${(p.got / 1048576).toFixed(1)} / ${(p.total / 1048576).toFixed(1)} MB）`;
+        } else if (p) {
+            st.textContent = p.stage;
+        }
+    });
+}
+window.updateInit = updateInit;
+
+async function updateCheck() {
+    $('upState').textContent = '检查中…';
+    $('upNotes').style.display = 'none';
+    $('btnUpdate').disabled = true;
+    try {
+        upInfo = await CheckUpdate();
+    } catch (e) {
+        $('upState').textContent = '❌ 检查失败: ' + e;
+        return;
+    }
+    if (upInfo.error) { $('upState').textContent = '⚠️ ' + upInfo.error; return; }
+    if (!upInfo.has_update) {
+        $('upState').textContent = `✅ 已是最新版本（${upInfo.current}）`;
+        return;
+    }
+    $('upState').textContent = `🆕 发现新版本 ${upInfo.latest}（当前 ${upInfo.current}）`;
+    if (upInfo.notes) { $('upNotes').textContent = upInfo.notes; $('upNotes').style.display = 'block'; }
+    $('btnUpdate').disabled = false;
+}
+window.updateCheck = updateCheck;
+
+async function updateRun() {
+    if (!upInfo || !upInfo.url) { await updateCheck(); }
+    if (!upInfo || !upInfo.url) return;
+    if (!confirm(`将下载 ${upInfo.latest} 并自动替换重启，继续？`)) return;
+    $('btnUpdate').disabled = true;
+    $('upState').textContent = '下载中…';
+    try {
+        const r = await StartUpdate(upInfo.url);
+        if (r && r.ok) {
+            $('upState').textContent = '✅ 下载完成，正在替换并重启…（本窗口会自动关闭）';
+        } else {
+            $('upState').textContent = '❌ ' + ((r && r.error) || '更新失败');
+            $('btnUpdate').disabled = false;
+        }
+    } catch (e) {
+        $('upState').textContent = '❌ ' + e;
+        $('btnUpdate').disabled = false;
+    }
+}
+window.updateRun = updateRun;
+
+async function updateSaveCfg() {
+    try {
+        const cur = await GetUpdateConfig();
+        cur.mirror = $('upMirror').value.trim();
+        await SaveUpdateConfig(cur);
+        $('upState').textContent = '✅ 加速节点已保存：' + (cur.mirror || '（直连 GitHub）');
+    } catch (e) {
+        $('upState').textContent = '❌ 保存失败: ' + e;
+    }
+}
+window.updateSaveCfg = updateSaveCfg;
+
+// 页面加载后: 渲染初始空行 + 加载邮箱配置 + 加载固定内容配置 + 加载外观设置 + 版本/更新
+document.addEventListener('DOMContentLoaded', () => { invRender(); mailInit(); invLoadFixed(); themeInit(); updateInit(); });
