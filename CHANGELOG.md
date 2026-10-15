@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.7 (2026-10-15)
+### 修复
+- 更新器 `updater.bat`：`tasklist` 的 `IMAGENAME` 改为**纯文件名**（原来给的是全路径 ⇒ 匹配不上 ⇒ 一直空等到 120s 超时）
+- 更新器路径拼接改为 **Windows 语义**（不受构建宿主影响）；结果文件统一为 `...\updater_result.txt`
+- **版本清单改挂 raw 路径**：自建加速站只放行 `download` / `raw` 两类路径，`/releases/latest/...` 会被它 502 ⇒ 主用 raw，`latest/download` 与 GitHub API 作兜底
+### 测试
+- 新增 `backend/update_test.go`：版本比较 + `updater.bat` 生成（纯 ASCII / 关键行）回归测试
+
 ## v1.0.6 (2026-10-15)
 ### 新增
 - **内置更新功能（走 GitHub 加速节点）**：关于页新增「版本与更新」

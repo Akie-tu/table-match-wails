@@ -374,14 +374,31 @@ func downloadAsset(cfg UpdateConfig, url, dest string, progress func(int64, int6
 	return 0, lastErr
 }
 
+// winBase 取 Windows 路径的文件名（同时认 \ 与 /）
+func winBase(p string) string {
+	p = strings.ReplaceAll(p, "\\", "/")
+	if i := strings.LastIndex(p, "/"); i >= 0 {
+		return p[i+1:]
+	}
+	return p
+}
+
+// winJoin 拼 Windows 路径（避免宿主为 Linux 时拼出 C:/app/xx）
+func winJoin(dir, name string) string {
+	dir = strings.TrimRight(dir, "\\/")
+	return dir + "\\" + name
+}
+
 // makeUpdaterBat 生成 updater.bat
 //
 //	★ 必须纯 ASCII：Windows CMD 默认 GBK，写中文会乱码/执行失败 ⚠️
 //	逻辑：等主进程退出(≤120s) → 若当前 exe 名≠标准名则删掉它 → move 覆盖 → 重启
 func makeUpdaterBat(newExe, runningExe, targetExe, dir string) string {
 	q := func(s string) string { return `"` + s + `"` }
-	runName := filepath.Base(runningExe)
-	resFile := filepath.Join(dir, "updater_result.txt")
+	// ⚠️ tasklist 的 IMAGENAME 只认【纯文件名】(给全路径匹配不上)
+	//    且路径分隔符要按 Windows 来 ⇒ 别直接用 filepath.Base/Join(宿主是 Linux 时会出错)
+	runName := winBase(runningExe)
+	resFile := winJoin(dir, "updater_result.txt")
 
 	var b strings.Builder
 	b.WriteString("@echo off\r\nsetlocal\r\n")
