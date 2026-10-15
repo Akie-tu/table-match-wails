@@ -110,7 +110,11 @@ func candidateURLs(cfg UpdateConfig, raw string) []string {
 		out = append(out, u)
 	}
 	out = append(out, raw)
-	for _, m := range []string{"https://ghfast.top/", "https://gh-proxy.com/"} {
+	// 备用自建源（主用挂掉时回落）+ 公共镜像兜底
+	for _, m := range []string{"https://gh.chibarin.top/", "https://ghfast.top/", "https://gh-proxy.com/"} {
+		if strings.TrimSpace(cfg.Mirror) == strings.TrimSpace(m) {
+			continue
+		}
 		out = append(out, m+raw)
 	}
 	return out
