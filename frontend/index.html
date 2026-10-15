@@ -134,7 +134,7 @@
             </div>
 
             <div class="actions">
-                <label style="margin-right:12px;cursor:pointer;"><input type="checkbox" id="invMerge"/> 合并开票(同税号同抬头合并数量金额, 只开一张)</label>
+                <label style="margin-right:12px;cursor:pointer;"><input type="checkbox" id="invMerge"/> 合并开票(同税号+同抬头+同项目/单位/税率 ⇒ 数量金额合并, 只开一张; 订单号不影响合并, 会拼进备注)</label>
                 <button class="primary" onclick="invGenerate()">▶ 生成发票文档</button>
             </div>
             <div id="invResult" class="result hidden"></div>

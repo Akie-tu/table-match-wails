@@ -32,13 +32,13 @@ type InvoiceResult struct {
 
 // 基本信息表列号
 const (
-	CBillSerial   = 1 // 流水号
-	CBillType     = 2 // 发票类型
-	CBillTaxInc   = 4 // 是否含税
-	CBillNatural  = 5 // 自然人标识
-	CBillBuyer    = 6 // 购买方名称
-	CBillTaxID    = 7 // 纳税人识别号
-	CBillRemark   = 23 // 备注
+	CBillSerial  = 1  // 流水号
+	CBillType    = 2  // 发票类型
+	CBillTaxInc  = 4  // 是否含税
+	CBillNatural = 5  // 自然人标识
+	CBillBuyer   = 6  // 购买方名称
+	CBillTaxID   = 7  // 纳税人识别号
+	CBillRemark  = 23 // 备注
 )
 
 // 明细表列号
@@ -90,8 +90,10 @@ func MergeInvoices(invoices []*Invoice) ([]*Invoice, []string) {
 	if len(invoices) <= 1 {
 		return invoices, nil
 	}
+	// ★ 合并键【不含备注】：用户明确"合并开票可以舍弃订单编号"
+	//   ⇒ 同抬头同税号(且同项目/单位/税率)的多单必须能合上，✗ 别让订单号把它拆开
 	type key struct {
-		taxID, buyer, invType, taxInc, natural, item, unit, rate, remark string
+		taxID, buyer, invType, taxInc, natural, item, unit, rate string
 	}
 	idx := map[key]int{} // key -> merged序号
 	merged := []*Invoice{}
@@ -107,12 +109,13 @@ func MergeInvoices(invoices []*Invoice) ([]*Invoice, []string) {
 			item:    inv.ItemName,
 			unit:    inv.Unit,
 			rate:    inv.TaxRate,
-			remark:  strings.TrimSpace(inv.Remark),
 		}
 		if ki, ok := idx[k]; ok {
 			tgt := merged[ki]
 			tgt.Qty = addQty(tgt.Qty, inv.Qty)
 			tgt.Amount = addAmount(tgt.Amount, inv.Amount)
+			// 备注不参与合并判定，但合并后把各单号拼起来（便于对账；超长自动收敛）
+			tgt.Remark = joinRemarks(tgt.Remark, inv.Remark)
 			notes = append(notes, fmt.Sprintf("已合并: %s(税号%s)的数量金额并入同行", inv.Buyer, k.taxID))
 		} else {
 			idx[k] = len(merged)
@@ -121,6 +124,57 @@ func MergeInvoices(invoices []*Invoice) ([]*Invoice, []string) {
 		}
 	}
 	return merged, notes
+}
+
+// remarkLimit 备注拼接上限（开票系统备注栏容量有限，超了会被截断）
+const remarkLimit = 180
+
+// splitRemarks 按常见分隔符拆开备注（订单号可能已经是拼接过的）
+func splitRemarks(s string) []string {
+	var out []string
+	for _, p := range strings.FieldsFunc(s, func(r rune) bool {
+		return r == '；' || r == ';' || r == ',' || r == '，' || r == '、'
+	}) {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// joinRemarks 合并备注：去重 + '；' 拼接 + 超长收敛
+//
+//	★ 合并开票时订单号允许舍弃 ⇒ 太长时只留第一单 + "等N单"，✗ 别硬塞导致被开票系统截断
+func joinRemarks(a, b string) string {
+	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
+	if a == "" {
+		return b
+	}
+	if b == "" {
+		return a
+	}
+	parts := splitRemarks(a)
+	for _, p := range parts {
+		if p == b {
+			return a // 已包含，去重
+		}
+	}
+	parts = append(parts, b)
+	joined := strings.Join(parts, "；")
+	if len([]rune(joined)) <= remarkLimit {
+		return joined
+	}
+	// 超长：留第一单 + "等N单"，并把第一单截到不超上限
+	tail := fmt.Sprintf(" 等%d单", len(parts))
+	keep := remarkLimit - len([]rune(tail))
+	if keep < 1 {
+		keep = 1
+	}
+	first := []rune(parts[0])
+	if len(first) > keep {
+		first = first[:keep]
+	}
+	return string(first) + tail
 }
 
 // 数量相加(支持小数; 无法解析则取非空者)
