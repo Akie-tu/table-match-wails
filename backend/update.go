@@ -193,6 +193,13 @@ func latestManifestURL(repo string) string {
 	return fmt.Sprintf("https://github.com/%s/releases/latest/download/latest.json", repo)
 }
 
+// rawManifestURL ★ 主用：raw 路径（自建加速站放行 raw ⇒ 国内可直取）
+//
+//	CI 发版时会把 latest.json 提交回仓库根目录
+func rawManifestURL(repo string) string {
+	return fmt.Sprintf("https://raw.githubusercontent.com/%s/main/latest.json", repo)
+}
+
 // fallbackAssetURL 兜底下载地址（清单里的 url 为空时用）
 func fallbackAssetURL(repo, asset string) string {
 	return fmt.Sprintf("https://github.com/%s/releases/latest/download/%s", repo, asset)
@@ -214,19 +221,27 @@ func CheckUpdate() *UpdateInfo {
 	info := &UpdateInfo{Current: Version, Mirror: cfg.Mirror}
 
 	// ── ① latest.json ──
-	for _, u := range candidateURLs(cfg, latestManifestURL(cfg.Repo)) {
-		var m manifest
-		if err := getJSON(u, &m); err != nil || strings.TrimSpace(m.Version) == "" {
-			continue
+	//   ★ 顺序有讲究：自建加速站【只放行 download / raw 两类路径】，
+	//     /releases/latest/... 会被它 502 ⇒ 主用 raw，latest/download 仅作直连兜底
+	manifestURLs := []string{
+		rawManifestURL(cfg.Repo),    // https://raw.githubusercontent.com/<repo>/main/latest.json
+		latestManifestURL(cfg.Repo), // https://github.com/<repo>/releases/latest/download/latest.json
+	}
+	for _, murl := range manifestURLs {
+		for _, u := range candidateURLs(cfg, murl) {
+			var m manifest
+			if err := getJSON(u, &m); err != nil || strings.TrimSpace(m.Version) == "" {
+				continue
+			}
+			info.Latest = strings.TrimSpace(m.Version)
+			info.Notes = strings.TrimSpace(m.Notes)
+			info.URL = strings.TrimSpace(m.URL)
+			if info.URL == "" {
+				info.URL = fallbackAssetURL(cfg.Repo, cfg.Asset)
+			}
+			info.HasUpdate = versionGT(info.Latest, Version)
+			return info
 		}
-		info.Latest = strings.TrimSpace(m.Version)
-		info.Notes = strings.TrimSpace(m.Notes)
-		info.URL = strings.TrimSpace(m.URL)
-		if info.URL == "" {
-			info.URL = fallbackAssetURL(cfg.Repo, cfg.Asset)
-		}
-		info.HasUpdate = versionGT(info.Latest, Version)
-		return info
 	}
 
 	// ── ② GitHub API 兜底 ──

@@ -80,6 +80,21 @@ jobs:
           python -c "import json,os;t=os.environ['TAG'];r=os.environ['REPO'];json.dump({'version':t,'notes':os.environ.get('NOTES','').strip(),'url':'https://github.com/'+r+'/releases/download/'+t+'/table-match-wails.exe'},open('latest.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)"
           cat latest.json
 
+      # ★ 把 latest.json 提交回仓库(main)：raw 路径免 API 检查更新
+      #   (自建加速站只放行 download/raw，/releases/latest/... 会被 502)
+      - name: Publish latest.json to repo
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f latest.json
+          if git diff --cached --quiet; then
+            echo "latest.json 无变化"
+          else
+            git commit -m "chore: latest.json for ${{ github.ref_name }} [skip ci]"
+            git push origin HEAD:main
+          fi
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
