@@ -1,5 +1,5 @@
 {
-  "version": "v1.0.7",
-  "notes": "### 修复\n- 更新器 `updater.bat`：`tasklist` 的 `IMAGENAME` 改为**纯文件名**（原来给的是全路径 ⇒ 匹配不上 ⇒ 一直空等到 120s 超时）\n- 更新器路径拼接改为 **Windows 语义**（不受构建宿主影响）；结果文件统一为 `...\\updater_result.txt`\n- **版本清单改挂 raw 路径**：自建加速站只放行 `download` / `raw` 两类路径，`/releases/latest/...` 会被它 502 ⇒ 主用 raw，`latest/download` 与 GitHub API 作兜底\n### 测试\n- 新增 `backend/update_test.go`：版本比较 + `updater.bat` 生成（纯 ASCII / 关键行）回归测试",
-  "url": "https://github.com/Akie-tu/table-match-wails/releases/download/v1.0.7/table-match-wails.exe"
+  "version": "v1.0.8",
+  "notes": "### 变更\n- **更新默认加速源切到温哥华自建节点**（`http://104.129.183.180:8088/<密径>/`）\n  - 实测：温哥华 **599 KB/s** vs 香港 32 KB/s ⇒ **快约 18 倍** ✅\n  - 加速站带密径保护：只放行密径开头的请求（无密径直接 404），防白嫖带宽\n  - **三级回落**：主用自建源 → 香港自建源 → GitHub 直连 → 公共镜像（ghfast / gh-proxy）\n  - 界面「加速节点」或 exe 同目录 `update_config.json` 仍可随时改/清空",
+  "url": "https://github.com/Akie-tu/table-match-wails/releases/download/v1.0.8/table-match-wails.exe"
 }
