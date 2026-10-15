@@ -77,19 +77,8 @@ jobs:
           NOTES: ${{ steps.changelog.outputs.body }}
           REPO: ${{ github.repository }}
         run: |
-          python - <<'PY'
-          import json, os
-          tag = os.environ["TAG"]
-          repo = os.environ["REPO"]
-          data = {
-              "version": tag,
-              "notes": os.environ.get("NOTES", "").strip(),
-              "url": f"https://github.com/{repo}/releases/download/{tag}/table-match-wails.exe",
-          }
-          with open("latest.json", "w", encoding="utf-8") as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
-          print(open("latest.json", encoding="utf-8").read())
-          PY
+          python -c "import json,os;t=os.environ['TAG'];r=os.environ['REPO'];json.dump({'version':t,'notes':os.environ.get('NOTES','').strip(),'url':'https://github.com/'+r+'/releases/download/'+t+'/table-match-wails.exe'},open('latest.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)"
+          cat latest.json
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
