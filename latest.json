@@ -1,0 +1,5 @@
+{
+  "version": "v1.0.6",
+  "notes": "### 新增\n- **内置更新功能（走 GitHub 加速节点）**：关于页新增「版本与更新」\n  - 当前版本显示 / 检查更新 / 一键更新（带下载进度条）\n  - **检查更新走 `releases/latest/download/latest.json`**：加速站能代理、免 GitHub API 限流；GitHub API 作兜底\n  - **下载走加速节点**：自建加速站 → GitHub 直连 → 公共镜像，三级兜底；带断点续传 + 大小校验\n  - 更新方式：下载 → 生成 updater.bat（纯 ASCII，等进程退出后延迟替换）→ 自动重启\n  - 资产尚未上传（CI 构建中）时给友好提示，不会下到半成品\n  - **加速节点可配**：exe 同目录 `update_config.json` + 界面可直接改（换温哥华节点或留空直连，不用重新发版）\n### 构建\n- CI：先生成 wails 绑定再构建前端（修 `xxx is not exported by wailsjs/go/main/App.js` 构建失败）\n- CI：发版自动附加 `latest.json` 版本清单",
+  "url": "https://github.com/Akie-tu/table-match-wails/releases/download/v1.0.6/table-match-wails.exe"
+}
